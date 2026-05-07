@@ -100,6 +100,29 @@ bool IsJoinFlood(const NETADDR *pAddr, int Tick, int TickSpeed, int *pCurrentHit
 }
 }
 
+class CRconClientLogger : public ILogger
+{
+	CServer *m_pServer;
+	int m_ClientId;
+
+public:
+	CRconClientLogger(CServer *pServer, int ClientId) :
+		m_pServer(pServer),
+		m_ClientId(ClientId)
+	{
+	}
+	void Log(const CLogMessage *pMessage) override;
+};
+
+void CRconClientLogger::Log(const CLogMessage *pMessage)
+{
+	if(m_Filter.Filters(pMessage))
+	{
+		return;
+	}
+	m_pServer->SendRconLogLine(m_ClientId, pMessage);
+}
+
 void CServer::CClient::Reset()
 {
 	// reset input
@@ -1361,8 +1384,12 @@ void CServer::ProcessClientPacket(CNetChunk* pPacket)
 			{
 				m_RconClientID = ClientID;
 				m_RconAuthLevel = m_aClients[ClientID].m_Authed;
-				Console()->SetAccessLevel(m_aClients[ClientID].m_Authed == AUTHED_ADMIN ? IConsole::ACCESS_LEVEL_ADMIN : IConsole::ACCESS_LEVEL_MOD);
-				Console()->ExecuteLineFlag(pCmd, CFGFLAG_SERVER, ClientID);
+				Console()->SetAccessLevel(m_aClients[ClientID].m_Authed == AUTHED_ADMIN ? IConsole::ACCESS_LEVEL_ADMIN : m_aClients[ClientID].m_Authed == AUTHED_MOD ? IConsole::ACCESS_LEVEL_MOD : IConsole::ACCESS_LEVEL_HELPER);
+				{
+					CRconClientLogger Logger(this, ClientID);
+					CLogScope Scope(&Logger);
+					Console()->ExecuteLineFlag(pCmd, CFGFLAG_SERVER, ClientID);
+				}
 				Console()->SetAccessLevel(IConsole::ACCESS_LEVEL_ADMIN);
 				m_RconClientID = RCON_CID_SERV;
 				m_RconAuthLevel = AUTHED_ADMIN;
