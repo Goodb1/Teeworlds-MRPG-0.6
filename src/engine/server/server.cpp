@@ -1384,7 +1384,7 @@ void CServer::ProcessClientPacket(CNetChunk* pPacket)
 			{
 				m_RconClientID = ClientID;
 				m_RconAuthLevel = m_aClients[ClientID].m_Authed;
-				Console()->SetAccessLevel(m_aClients[ClientID].m_Authed == AUTHED_ADMIN ? IConsole::ACCESS_LEVEL_ADMIN : m_aClients[ClientID].m_Authed == AUTHED_MOD ? IConsole::ACCESS_LEVEL_MOD : IConsole::ACCESS_LEVEL_HELPER);
+				Console()->SetAccessLevelFromAuthed(m_aClients[ClientID].m_Authed);
 				{
 					CRconClientLogger Logger(this, ClientID);
 					CLogScope Scope(&Logger);

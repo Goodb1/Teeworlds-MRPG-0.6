@@ -130,6 +130,7 @@ public:
 	virtual void PrintFormat(ColorRGBA PrintColor, int Level, const char* pFrom, const char* pStr, ...) = 0;
 
 	virtual void SetAccessLevel(int AccessLevel) = 0;
+	virtual void SetAccessLevelFromAuthed(int AuthedLevel) = 0;
 
 	virtual void ResetGameSettings() = 0;
 

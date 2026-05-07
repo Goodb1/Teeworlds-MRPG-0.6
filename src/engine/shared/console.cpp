@@ -1419,6 +1419,27 @@ const IConsole::CCommandInfo* CConsole::GetCommandInfo(const char* pName, int Fl
 
 std::unique_ptr<IConsole> CreateConsole(int FlagMask) { return std::make_unique<CConsole>(FlagMask); }
 
+void CConsole::SetAccessLevelFromAuthed(int AuthedLevel) {
+	switch (AuthedLevel) {
+		case AUTHED_ADMIN: {
+			SetAccessLevel(ACCESS_LEVEL_ADMIN);
+			break;
+		}
+		case AUTHED_MOD: {
+			SetAccessLevel(ACCESS_LEVEL_MOD);
+			break;
+		}
+		case AUTHED_HELPER: {
+			SetAccessLevel(ACCESS_LEVEL_HELPER);
+			break;
+		}
+		default: {
+			SetAccessLevel(ACCESS_LEVEL_USER);
+			break;
+		}
+	}
+}
+
 void CConsole::ResetGameSettings()
 {
 #define MACRO_CONFIG_INT(Name, ScriptName, Def, Min, Max, Flags, Desc) \
