@@ -29897,7 +29897,7 @@ CREATE TABLE `tw_quests_list` (
 --
 
 INSERT INTO `tw_quests_list` (`ID`, `NextQuestID`, `Name`, `Money`, `Exp`, `Flags`) VALUES
-(1, 2, 'First quest', 0, 0, 'Type main,Can\'t refuse','Tutorial'),
+(1, 2, 'First quest', 0, 0, 'Type main,Can\'t refuse,Tutorial'),
 (2, 3, 'Coming to Gridania', 5, 10, 'Type main,Can\'t refuse'),
 (3, 4, 'Close to Home', 10, 50, 'Type main,Can\'t refuse'),
 (4, 5, 'To the Bannock', 10, 10, 'Type main,Can\'t refuse'),
