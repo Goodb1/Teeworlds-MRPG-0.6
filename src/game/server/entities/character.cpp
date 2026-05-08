@@ -1647,13 +1647,21 @@ void CCharacter::HandleTilesImpl(int Index)
 		}
 
 		// fishing information
+		bool FishingRodEquipped = m_pPlayer->GetEquippedSlotItemID(ItemType::EquipFishrod).has_value();
 		if(m_pTilesHandler->IsEnter(TILE_FISHING_MODE))
 		{
-			GS()->Broadcast(m_ClientID, BroadcastPriority::GameBasicStats, 100, "'Fire' - to start fishing. 'Vote yes' - to start auto fishing.");
+			if (!FishingRodEquipped)
+				GS()->Broadcast(m_ClientID, BroadcastPriority::GameBasicStats, 100, "You must equip fishing rod first!");
+			else
+				GS()->Broadcast(m_ClientID, BroadcastPriority::GameBasicStats, 100, "'Fire' - to start fishing. 'Vote yes' - to start auto fishing.");
 		}
 
 		if(m_pTilesHandler->IsActive(TILE_FISHING_MODE))
 		{
+			if (!FishingRodEquipped) {
+				return;
+			}
+
 			auto ResetWaitingRod = [this]()
 			{
 				if(m_pFishingRod)
