@@ -745,7 +745,7 @@ void CPlayer::FormatBroadcastBasicStats(char* pBuffer, int Size, const char* pAp
 	// active group scenario lives info (dungeon/world)
 	if(auto pScenario = GS()->ScenarioGroupManager()->GetActiveScenarioByPlayer(m_ClientID); pScenario && pScenario->GetGroupLives() > 0)
 		Result += "\n" + fmt_localize(m_ClientID, "Group lives: {}", pScenario->GetGroupLives());
-	else if(auto pScenario = GS()->ScenarioWorldManager()->GetActiveScenarioByWorld(GetCurrentWorldID()); pScenario && pScenario->GetGroupLives() > 0)
+	else if(auto pScenario = GS()->ScenarioWorldManager()->GetActiveScenario(); pScenario && pScenario->GetGroupLives() > 0)
 		Result += "\n" + fmt_localize(m_ClientID, "Group lives: {}", pScenario->GetGroupLives());
 
 	// active mini-event info

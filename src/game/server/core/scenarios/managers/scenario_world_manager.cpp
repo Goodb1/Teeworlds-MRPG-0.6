@@ -3,163 +3,117 @@
 
 void CScenarioWorldManager::UpdateScenarios()
 {
-	std::vector<int> vPendingToFinalize;
-	for(const auto& [scenarioID, pendingStart] : m_vPendingStarts)
+	// is timeout pending
+	if(m_PendingStart.m_Active && time_get() >= m_PendingStart.m_StartAt)
+		TryFinalizePendingStart();
+
+	// update scenario
+	if(m_pScenario && !m_PendingStart.m_Active)
 	{
-		if(time_get() >= pendingStart.m_StartAt)
-			vPendingToFinalize.push_back(scenarioID);
+		m_pScenario->Tick();
+		if(!m_pScenario->IsRunning())
+			m_pScenario.reset();
 	}
-
-	for(const int scenarioID : vPendingToFinalize)
-		TryFinalizePendingStart(scenarioID);
-
-	std::erase_if(m_vScenarios, [this](const auto& item)
-	{
-		const auto& [id, pScenario] = item;
-		if(m_vPendingStarts.contains(id))
-			return false;
-
-		if(pScenario)
-		{
-			pScenario->Tick();
-			return !pScenario->IsRunning();
-		}
-
-		return true;
-	});
 }
 
 void CScenarioWorldManager::RemoveClient(int ClientID)
 {
-	for(auto& [scenarioID, pendingStart] : m_vPendingStarts)
+	// remove from pending
+	if(m_PendingStart.m_Active)
 	{
-		pendingStart.m_JoinedPlayers.erase(ClientID);
-		pendingStart.m_DeclinedPlayers.erase(ClientID);
+		m_PendingStart.m_JoinedPlayers.erase(ClientID);
+		m_PendingStart.m_DeclinedPlayers.erase(ClientID);
 	}
 
-	for(auto& [id, pScenario] : m_vScenarios)
-	{
-		if(pScenario)
-			pScenario->RemoveParticipant(ClientID);
-	}
-}
-
-bool CScenarioWorldManager::IsActive(int ScenarioID) const
-{
-	auto it = m_vScenarios.find(ScenarioID);
-	return (it != m_vScenarios.end() && it->second && it->second->IsRunning());
-}
-
-std::shared_ptr<WorldScenarioBase> CScenarioWorldManager::GetActiveScenarioByWorld(int WorldID) const
-{
-	for(const auto& [id, pScenario] : m_vScenarios)
-	{
-		if(pScenario && pScenario->IsRunning() && pScenario->GetWorldID() == WorldID)
-			return pScenario;
-	}
-
-	for(const auto& [id, pendingStart] : m_vPendingStarts)
-	{
-		if(pendingStart.m_pScenario && pendingStart.m_pScenario->GetWorldID() == WorldID)
-			return pendingStart.m_pScenario;
-	}
-
-	return nullptr;
+	// remove from scenario
+	if(m_pScenario)
+		m_pScenario->RemoveParticipant(ClientID);
 }
 
 std::shared_ptr<WorldScenarioBase> CScenarioWorldManager::GetActiveScenarioByPlayer(int ClientID) const
 {
-	for(const auto& [id, pScenario] : m_vScenarios)
-	{
-		if(pScenario && pScenario->IsRunning() && pScenario->GetParticipants().contains(ClientID))
-			return pScenario;
-	}
-
-	return nullptr;
+	return m_pScenario && m_pScenario->IsRunning() && m_pScenario->GetParticipants().contains(ClientID) ? m_pScenario : nullptr;
 }
 
-void CScenarioWorldManager::TryFinalizePendingStart(int ScenarioID)
+void CScenarioWorldManager::TryFinalizePendingStart()
 {
-	auto pendingIt = m_vPendingStarts.find(ScenarioID);
-	if(pendingIt == m_vPendingStarts.end())
+	// is already ending
+	if(!m_PendingStart.m_Active)
 		return;
 
-	PendingScenarioStart pendingStart = std::move(pendingIt->second);
-	m_vPendingStarts.erase(pendingIt);
+	m_PendingStart.m_Active = false;
 
-	if(!pendingStart.m_pScenario)
+	// check valid scenario
+	if(!m_pScenario)
+		return;
+
+	// add joined players to scenario participant
+	for(const int joinedClientID : m_PendingStart.m_JoinedPlayers)
+		m_pScenario->AddParticipant(joinedClientID);
+
+	// cancel is empty
+	if(m_pScenario->GetParticipants().empty())
 	{
-		m_vScenarios.erase(ScenarioID);
+		m_pGS->ChatWorld(m_pScenario->GetWorldID(), "World scenario", "Cancelled: no participants joined.");
+		m_pScenario.reset();
 		return;
 	}
 
-	for(const int joinedClientID : pendingStart.m_JoinedPlayers)
-		pendingStart.m_pScenario->AddParticipant(joinedClientID);
-
-	if(pendingStart.m_pScenario->GetParticipants().empty())
+	// start world scenario
+	m_pScenario->Start();
+	if(!m_pScenario->IsRunning())
 	{
-		m_pGS->ChatWorld(pendingStart.m_pScenario->GetWorldID(), "World scenario", "Cancelled: no participants joined.");
-		m_vScenarios.erase(ScenarioID);
+		m_pScenario.reset();
 		return;
 	}
 
-	pendingStart.m_pScenario->Start();
-	if(!pendingStart.m_pScenario->IsRunning())
-	{
-		m_vScenarios.erase(ScenarioID);
-		return;
-	}
-
-	m_pGS->ChatWorld(pendingStart.m_pScenario->GetWorldID(), "World scenario", "Started: {} participant(s).", (int)pendingStart.m_JoinedPlayers.size());
+	m_pGS->ChatWorld(m_pScenario->GetWorldID(), "World scenario", "Started: {} participant(s).", (int)m_PendingStart.m_JoinedPlayers.size());
 }
 
-void CScenarioWorldManager::AttachVoteForPlayer(int ScenarioID, int ClientID)
+void CScenarioWorldManager::AttachVoteForPlayer(int ClientID)
 {
-	auto pendingIt = m_vPendingStarts.find(ScenarioID);
-	if(pendingIt == m_vPendingStarts.end())
+	// is already ending
+	if(!m_PendingStart.m_Active)
 		return;
 
-	PendingScenarioStart& pendingStart = pendingIt->second;
-	if(!pendingStart.m_pScenario || time_get() >= pendingStart.m_StartAt)
+	// check valid time for attach & valid
+	if(!m_pScenario || time_get() >= m_PendingStart.m_StartAt)
 		return;
 
+	// check valid client world ID
 	auto* pPlayer = m_pGS->GetPlayer(ClientID);
-	if(!pPlayer || pPlayer->GetCurrentWorldID() != pendingStart.m_pScenario->GetWorldID())
+	if(!pPlayer || pPlayer->GetCurrentWorldID() != m_pScenario->GetWorldID())
 		return;
 
-	const int remainingSeconds = std::max(1, (int)((pendingStart.m_StartAt - time_get()) / time_freq()));
+	// register callback options vote
+	const int remainingSeconds = std::max(1, (int)((m_PendingStart.m_StartAt - time_get()) / time_freq()));
 	auto* pOption = CVoteOptional::Create(ClientID, remainingSeconds, "Enter world scenario.");
-
-	pOption->RegisterCallback([this, ScenarioID](CPlayer* pVotePlayer, bool isJoined)
+	pOption->RegisterCallback([this](CPlayer* pVotePlayer, bool isJoined)
 	{
-		auto pendingItInner = m_vPendingStarts.find(ScenarioID);
-		if(pendingItInner == m_vPendingStarts.end() || !pVotePlayer)
+		if(!m_PendingStart.m_Active || !pVotePlayer)
 			return;
 
-		PendingScenarioStart& pendingStartInner = pendingItInner->second;
 		const int playerCID = pVotePlayer->GetCID();
-		pendingStartInner.m_JoinedPlayers.erase(playerCID);
-		pendingStartInner.m_DeclinedPlayers.erase(playerCID);
+		m_PendingStart.m_JoinedPlayers.erase(playerCID);
+		m_PendingStart.m_DeclinedPlayers.erase(playerCID);
 
 		if(isJoined)
-			pendingStartInner.m_JoinedPlayers.insert(playerCID);
+			m_PendingStart.m_JoinedPlayers.insert(playerCID);
 		else
-			pendingStartInner.m_DeclinedPlayers.insert(playerCID);
+			m_PendingStart.m_DeclinedPlayers.insert(playerCID);
 	});
 
-	pOption->RegisterCloseCondition([this, ScenarioID](CPlayer* pVotePlayer)
+	pOption->RegisterCloseCondition([this](CPlayer* pVotePlayer)
 	{
-		auto pendingItInner = m_vPendingStarts.find(ScenarioID);
-		if(pendingItInner == m_vPendingStarts.end() || !pVotePlayer)
+		if(!m_PendingStart.m_Active || !pVotePlayer)
 			return true;
 
-		if(time_get() >= pendingItInner->second.m_StartAt)
+		if(time_get() >= m_PendingStart.m_StartAt)
 		{
-			TryFinalizePendingStart(ScenarioID);
+			TryFinalizePendingStart();
 			return true;
 		}
 
-		const auto* pScenario = pendingItInner->second.m_pScenario.get();
-		return !pScenario || pVotePlayer->GetCurrentWorldID() != pScenario->GetWorldID();
+		return !m_pScenario || pVotePlayer->GetCurrentWorldID() != m_pScenario->GetWorldID();
 	});
 }

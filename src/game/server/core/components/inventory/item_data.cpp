@@ -463,6 +463,7 @@ bool CPlayerItem::Use(int Value)
 	// try use scenario
 	if(const auto& pUseData = Info()->GetUseScenarioContext(); pUseData.has_value())
 	{
+		// check valid world
 		if(pUseData->WorldID >= 0 && pUseData->WorldID != pPlayer->GetCurrentWorldID())
 		{
 			const char* pRequiredWorldName = Server()->GetWorldName(pUseData->WorldID);
@@ -472,14 +473,15 @@ bool CPlayerItem::Use(int Value)
 			return false;
 		}
 
-		if(GS()->ScenarioWorldManager()->GetActiveScenarioByWorld(pUseData->WorldID))
+		// check already active
+		if(GS()->ScenarioWorldManager()->GetActiveScenario())
 		{
 			GS()->Chat(m_ClientID, "World scenario is already active in this world.");
 			return false;
 		}
 
 		// set reward context
-		if(const auto pScenario = std::dynamic_pointer_cast<CWorldScenario>(GS()->ScenarioWorldManager()->GetActiveScenarioByWorld(pUseData->WorldID)))
+		if(const auto pScenario = std::dynamic_pointer_cast<CWorldScenario>(GS()->ScenarioWorldManager()->GetActiveScenario()))
 		{
 			std::vector<CWorldScenario::RewardEntry> vRewards;
 			vRewards.reserve(pUseData->vRewards.size());
