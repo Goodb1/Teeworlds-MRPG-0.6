@@ -480,7 +480,12 @@ bool CPlayerItem::Use(int Value)
 			return false;
 		}
 
-		// set reward context
+		// start scenario
+		GS()->ChatWorld(pUseData->WorldID, "", "{}", pUseData->Name);
+		GS()->ChatWorld(pUseData->WorldID, "", "Triggered by {}", Server()->ClientName(m_ClientID));
+		pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_USE, Info()->GetScenarioMode());
+
+		// set reward context for the just registered scenario
 		if(const auto pScenario = std::dynamic_pointer_cast<CWorldScenario>(GS()->ScenarioWorldManager()->GetActiveScenario()))
 		{
 			std::vector<CWorldScenario::RewardEntry> vRewards;
@@ -489,11 +494,6 @@ bool CPlayerItem::Use(int Value)
 				vRewards.push_back({ RewardEntry.ItemID, RewardEntry.Value, RewardEntry.Chance });
 			pScenario->SetContextRewards(vRewards);
 		}
-
-		// start scenario
-		GS()->ChatWorld(pUseData->WorldID, "", "{}", pUseData->Name);
-		GS()->ChatWorld(pUseData->WorldID, "", "Triggered by {}", Server()->ClientName(m_ClientID));
-		pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_USE, Info()->GetScenarioMode());
 		Remove(Value);
 		return true;
 	}
