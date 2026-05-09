@@ -97,6 +97,7 @@ public:
 	}
 
 	// getters
+	std::string GetExpiresRemainingString() const;
 	int GetTotalAttributesLevel() const { return Info()->GetTotalAttributesLevel(m_Enchant); }
 	std::optional<float> GetEnchantAttributeChance(AttributeIdentifier ID) const { return Info()->GetEnchantAttributeChance(ID, m_Enchant); }
 	int GetEnchantAttributeValue(AttributeIdentifier ID) const { return Info()->GetEnchantAttributeValue(ID, m_Enchant); }

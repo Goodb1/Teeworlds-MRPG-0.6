@@ -212,6 +212,31 @@ bool CPlayerItem::SetValue(int Value)
 	return Changes;
 }
 
+std::string CPlayerItem::GetExpiresRemainingString() const
+{
+	if(m_ExpiresAt <= 0)
+		return "";
+
+	const auto Now = time(nullptr);
+	const auto Remaining = maximum<time_t>(0, m_ExpiresAt - Now);
+
+	if(Remaining < 3600) // minutes
+	{
+		const auto Minutes = (Remaining + 59) / 60;
+		return fmt_default("({}m)", Minutes);
+	}
+
+	if(Remaining < 86400) // hours
+	{
+		const auto Hours = (Remaining + 3599) / 3600;
+		return fmt_default("({}h)", Hours);
+	}
+
+	// days
+	const auto Days = (Remaining + 86399) / 86400;
+	return fmt_default("({}d)", Days);
+}
+
 bool CPlayerItem::IsEquipped() const
 {
 	if(m_Value <= 0)
