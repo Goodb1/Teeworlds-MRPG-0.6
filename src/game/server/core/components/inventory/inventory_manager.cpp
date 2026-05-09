@@ -86,8 +86,20 @@ void CInventoryManager::OnPlayerLogin(CPlayer* pPlayer)
 		const auto Settings = pRes->getInt("Settings");
 		const auto Enchant = pRes->getInt("Enchant");
 		const auto Durability = pRes->getInt("Durability");
+		const auto ExpiresAt = pRes->getInt("ExpiresAt");
 
-		CPlayerItem(ItemID, ClientID).Init(Value, Enchant, Durability, Settings);
+		CPlayerItem(ItemID, ClientID).Init(Value, Enchant, Durability, Settings, ExpiresAt);
+	}
+
+	// remove expired temporary items after loading inventory
+	const int CurrentTime = (int)time(nullptr);
+	for(auto& [ItemID, ItemData] : CPlayerItem::Data()[ClientID])
+	{
+		if(!ItemData.HasItem())
+			continue;
+
+		if(ItemData.GetExpiresAt() > 0 && ItemData.GetExpiresAt() <= CurrentTime)
+			ItemData.Remove(ItemData.GetValue());
 	}
 }
 

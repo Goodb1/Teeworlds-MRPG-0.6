@@ -16,12 +16,13 @@ protected:
 	int m_Value {};
 	int m_Enchant {};
 	int m_Durability {};
+	time_t m_ExpiresAt {};
 	int m_Settings {};
 
 public:
 	CItem() = default;
-	CItem(ItemIdentifier ID, int Value = 0, int Enchant = 0, int Durability = 100, int Settings = 0) :
-		m_ID(ID), m_Value(Value), m_Enchant(Enchant), m_Durability(Durability), m_Settings(Settings)
+	CItem(ItemIdentifier ID, int Value = 0, int Enchant = 0, int Durability = 100, int Settings = 0, time_t ExpiresAt = 0) :
+		m_ID(ID), m_Value(Value), m_Enchant(Enchant), m_Durability(Durability), m_ExpiresAt(ExpiresAt), m_Settings(Settings)
 	{
 	}
 
@@ -31,6 +32,7 @@ public:
 	int GetEnchant() const { return m_Enchant; }
 	int GetDurability() const { return m_Durability; }
 	int GetSettings() const { return m_Settings; }
+	time_t GetExpiresAt() const { return m_ExpiresAt; }
 	bool IsValid() const { return CItemDescription::Data().contains(m_ID) && m_Value > 0; }
 	CItemDescription* Info() const { return &CItemDescription::Data()[m_ID]; }
 	std::string GetStringEnchantLevel() const { return Info()->GetStringEnchantLevel(m_Enchant); }
@@ -58,6 +60,11 @@ public:
 		m_Settings = Settings;
 		return true;
 	}
+	virtual bool SetExpiresAt(time_t ExpiresAt)
+	{
+		m_ExpiresAt = ExpiresAt;
+		return true;
+	}
 };
 
 
@@ -74,17 +81,18 @@ class CPlayerItem : public CItem, public MultiworldIdentifiableData<std::map<int
 public:
 	CPlayerItem() = default;
 	CPlayerItem(ItemIdentifier ID, int ClientID) : CItem(ID), m_ClientID(ClientID) {}
-	CPlayerItem(ItemIdentifier ID, int ClientID, int Value, int Enchant, int Durability, int Settings) :
-		CItem(ID, Value, Enchant, Durability, Settings), m_ClientID(ClientID)
+	CPlayerItem(ItemIdentifier ID, int ClientID, int Value, int Enchant, int Durability, int Settings, time_t ExpiresAt) :
+		CItem(ID, Value, Enchant, Durability, Settings, ExpiresAt), m_ClientID(ClientID)
 	{
 	}
 
-	void Init(int Value, int Enchant, int Durability, int Settings)
+	void Init(int Value, int Enchant, int Durability, int Settings, time_t ExpiresAt = 0)
 	{
 		m_Value = Value;
 		m_Enchant = Enchant;
 		m_Durability = Durability;
 		m_Settings = Settings;
+		m_ExpiresAt = ExpiresAt;
 		CPlayerItem::m_pData[m_ClientID][m_ID] = *this;
 	}
 
