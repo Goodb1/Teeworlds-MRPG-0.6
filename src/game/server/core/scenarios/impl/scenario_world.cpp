@@ -68,7 +68,7 @@ private:
 					if(pItem && random_float(100.0f) < Reward.m_Chance)
 					{
 						pItem->Add(Reward.m_Value, 0, 0, false);
-						GS()->Chat(ClientID, "World scenario reward: {} x{}.", pItem->Info()->GetName(), Reward.m_Value);
+						GS()->Chat(ClientID, "Scenario reward: {} x{}.", pItem->Info()->GetName(), Reward.m_Value);
 					}
 				}
 			}

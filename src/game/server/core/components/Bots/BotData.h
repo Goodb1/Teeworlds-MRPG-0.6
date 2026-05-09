@@ -158,12 +158,12 @@ enum MobBehaviorFlags
 class CMobDebuff
 {
 	float m_Chance {};
-	ECharacterEffect m_Effect {};
+	EffectName m_Effect {};
 	std::tuple<int, int> m_Time {};
 
 public:
 	CMobDebuff() = default;
-	CMobDebuff(float Chance, ECharacterEffect Effect, const std::tuple<int, int>& Time)
+	CMobDebuff(float Chance, const EffectName& Effect, const std::tuple<int, int>& Time)
 		: m_Chance(Chance), m_Effect(Effect), m_Time(Time) {}
 
 	enum TupleIndices
@@ -172,7 +172,7 @@ public:
 		RANGE = 1
 	};
 
-	ECharacterEffect getEffect() const noexcept
+	const EffectName& getEffect() const noexcept
 	{
 		return m_Effect;
 	}

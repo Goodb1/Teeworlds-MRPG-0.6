@@ -49,7 +49,7 @@ void MobBotInfo::InitDebuffs(int Seconds, int Range, float Chance, const DBSet& 
 {
 	for(auto& def : buffSets.getItems())
 	{
-		CMobDebuff debuff(Chance, EffectFromName(def.c_str()), std::make_pair(Seconds, Range));
+		CMobDebuff debuff(Chance, EffectName(def), std::make_pair(Seconds, Range));
 		m_Effects.emplace_back(debuff);
 	}
 }

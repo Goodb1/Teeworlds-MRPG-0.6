@@ -244,7 +244,7 @@ void CMobAI::HandleBehaviors(bool* pbAsleep)
 				auto* pTarget = dynamic_cast<CCharacter*>(pEnt);
 				if(pTarget && pTarget->IsAllowedPVP(m_ClientID))
 				{
-					pTarget->GetPlayer()->m_Effects.Add(ECharacterEffect::POISON, Server()->TickSpeed() * 5);
+					pTarget->GetPlayer()->m_Effects.Add(EFFECT_NAME_POISON, Server()->TickSpeed() * 5);
 				}
 			}
 			GS()->CreateDeath(RandomPosition, m_ClientID);

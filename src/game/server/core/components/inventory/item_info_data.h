@@ -32,7 +32,7 @@ class CItemDescription : public MultiworldIdentifiableData < std::map< int, CIte
 public:
 	struct PotionContext
 	{
-		ECharacterEffect Effect {};
+		EffectName Effect {};
 		int Value {};
 		int Lifetime {};
 		int Recasttime {};

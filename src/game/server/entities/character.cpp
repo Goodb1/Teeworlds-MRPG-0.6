@@ -1388,7 +1388,7 @@ bool CCharacter::TakeDamage(vec2 Force, int Damage, int FromCID, int Weapon, int
 	m_pPlayer->m_aPlayerTick[LastDamage] = Server()->Tick();
 
 	// last stand effect
-	if(m_pPlayer->m_Effects.IsActive(ECharacterEffect::LAST_STAND))
+	if(m_pPlayer->m_Effects.IsActive(EFFECT_NAME_LAST_STAND))
 		m_Health = maximum(1, m_Health);
 
 	// create hit sound damage
@@ -1852,7 +1852,7 @@ void CCharacter::HandleIndependentTuning()
 
 void CCharacter::HandleBuff(CTuningParams* TuningParams)
 {
-	if(m_pPlayer->m_Effects.IsActive(ECharacterEffect::SLOWNESS))
+	if(m_pPlayer->m_Effects.IsActive(EFFECT_NAME_SLOWNESS))
 	{
 		TuningParams->m_Gravity = 0.35f;
 		TuningParams->m_GroundFriction = 0.45f;
@@ -1866,7 +1866,7 @@ void CCharacter::HandleBuff(CTuningParams* TuningParams)
 		TuningParams->m_HookLength = 0.0f;
 	}
 
-	if(m_pPlayer->m_Effects.IsActive(ECharacterEffect::STUN))
+	if(m_pPlayer->m_Effects.IsActive(EFFECT_NAME_STUN))
 	{
 		TuningParams->m_Gravity = 0.25f;
 		TuningParams->m_GroundFriction = 0.45f;
@@ -1884,14 +1884,14 @@ void CCharacter::HandleBuff(CTuningParams* TuningParams)
 	if(Server()->Tick() % Server()->TickSpeed() == 0)
 	{
 		// fire
-		if(m_pPlayer->m_Effects.IsActive(ECharacterEffect::FIRE))
+		if(m_pPlayer->m_Effects.IsActive(EFFECT_NAME_FIRE))
 		{
 			const int ExplDmg = translate_to_percent_rest(m_pPlayer->GetMaxHealth(), 3);
 			GS()->CreateExplosion(m_Core.m_Pos, -1, WEAPON_GAME, ExplDmg);
 		}
 
 		// poison
-		if(m_pPlayer->m_Effects.IsActive(ECharacterEffect::POISON))
+		if(m_pPlayer->m_Effects.IsActive(EFFECT_NAME_POISON))
 		{
 			const int PoisonDmg = translate_to_percent_rest(m_pPlayer->GetMaxHealth(), 3);
 			TakeDamage({}, PoisonDmg, -1, WEAPON_GAME);

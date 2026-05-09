@@ -138,12 +138,12 @@ void CAttackTeleport::Tick()
 					const auto EffectTime = 8;
 					if(pSkill->GetMod(SkillMod::AttackTeleportFire))
 					{
-						pNextPlayer->m_Effects.Add(ECharacterEffect::FIRE, EffectTime * Server()->TickSpeed());
+						pNextPlayer->m_Effects.Add(EFFECT_NAME_FIRE, EffectTime * Server()->TickSpeed());
 						GS()->CreateExplosion(SearchPos, ClientID, WEAPON_GAME, maxDmgSize);
 					}
 					else if(pSkill->GetMod(SkillMod::AttackTeleportStun))
 					{
-						pNextPlayer->m_Effects.Add(ECharacterEffect::STUN, EffectTime * Server()->TickSpeed());
+						pNextPlayer->m_Effects.Add(EFFECT_NAME_STUN, EffectTime * Server()->TickSpeed());
 					}
 					else if(pSkill->GetMod(SkillMod::AttackTeleportRestoreHP))
 					{
