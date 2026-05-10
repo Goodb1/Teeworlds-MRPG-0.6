@@ -116,7 +116,9 @@ MACRO_CONFIG_INT(SvActivityCoinPeriodicRewardInterval, sv_activity_coin_reward_i
 MACRO_CONFIG_INT(SvActivityCoinPeriodicRewardAmount, sv_activity_coin_reward_amount, 10, 1, 100000, CFGFLAG_SERVER, "Amount of Activity Coins granted periodically while online")
 
 MACRO_CONFIG_INT(SvDroppedItemLifetime, sv_dropped_item_lifetime, 20, 5, 60, CFGFLAG_SERVER, "Lifetime dropped item in seconds")
-MACRO_CONFIG_INT(SvDropsCurrencyFromMobs, sv_drops_currency_from_mobs, 0, 0, 1, CFGFLAG_SERVER, "Drops currency from mobs. 0 - to inventory, 1 - to pickup.")
+MACRO_CONFIG_INT(SvDropCurrencyToInventory, sv_drop_currency_to_inventory, 1, 0, 1, CFGFLAG_SERVER, "Drop currency from mobs. 0 - to pickup, 1 - to inventory.")
+MACRO_CONFIG_INT(SvDropDirectToInventory, sv_drop_direct_to_inventory, 0, 0, 1, CFGFLAG_SERVER, "Drop items from mobs. 0 - to pickup, 1 - to inventory.")
+
 
 // -----------------------
 // Player stats balance

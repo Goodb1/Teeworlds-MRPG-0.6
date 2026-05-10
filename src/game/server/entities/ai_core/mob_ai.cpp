@@ -109,25 +109,34 @@ void CMobAI::OnRewardPlayer(CPlayer* pPlayer, vec2 Force) const
 		{
 			const int DropID = m_pMobInfo->m_aDropItem[i];
 			int DropValue = m_pMobInfo->m_aValueItem[i];
-
 			if(DropID <= 0 || DropValue <= 0)
 				continue;
 
+			const auto* pItemInfo = GS()->GetItemInfo(DropID);
 			const float BaseDropChance = m_pMobInfo->m_aRandomItem[i];
 			const float LuckyDropBonus = BaseDropChance * (ActiveLuckyDrop / 100.0f);
-			const float RandomDrop = clamp(BaseDropChance + LuckyDropBonus, 0.0f, 100.0f);
-			const vec2 ForceRandom = random_range_pos(Force, 4.f);
+			const float FinalChance = clamp(BaseDropChance + LuckyDropBonus, 0.0f, 100.0f);
 			GS()->Core()->MiniEventsManager()->ApplyBonus(MiniEventType::MobDrop, &DropValue);
 
+			// currency -> direct inventory
+			if(g_Config.m_SvDropCurrencyToInventory && pItemInfo->IsGroup(ItemGroup::Currency))
+			{
+				pPlayer->GetItem(DropID)->Add(DropValue);
+				continue;
+			}
+
+			// item's -> direct inventory
+			if(g_Config.m_SvDropDirectToInventory && random_float(100.0f) < FinalChance)
+			{
+				pPlayer->GetItem(DropID)->Add(DropValue);
+				continue;
+			}
+
+			// pickup drop
 			CItem DropItem;
 			DropItem.SetID(DropID);
 			DropItem.SetValue(DropValue);
-
-			// currency to inventory or by pickup
-			if(!g_Config.m_SvDropsCurrencyFromMobs && DropItem.Info()->IsGroup(ItemGroup::Currency))
-				pPlayer->GetItem(DropID)->Add(DropValue);
-			else
-				GS()->EntityManager()->RandomDropItem(m_pCharacter->m_Core.m_Pos, ClientID, RandomDrop, DropItem, ForceRandom);
+			GS()->EntityManager()->RandomDropItem(m_pCharacter->m_Core.m_Pos, ClientID, FinalChance, DropItem, random_range_pos(Force, 4.0f));
 		}
 	}
 
