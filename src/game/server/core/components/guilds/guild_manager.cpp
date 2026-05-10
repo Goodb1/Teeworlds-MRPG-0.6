@@ -1691,7 +1691,7 @@ void CGuildManager::ShowDetail(CPlayer* pPlayer, CGuildHouse* pHouse) const
 	MHouseDetail.AddText("House HID:[{}]", HouseID);
 	MHouseDetail.AddText("Farm {(zone|zones): #}", (int)pHouse->GetFarmzonesManager()->GetContainer().size());
 	MHouseDetail.AddText("{(Door|Doors): #}", (int)pHouse->GetDoorManager()->GetContainer().size());
-	MHouseDetail.AddText("Daily fee: {$}", pHouse->GetRentPrice());
+	MHouseDetail.AddText("Daily rent: {$}", pHouse->GetRentPrice());
 	MHouseDetail.AddSeparateLine();
 	if(!pHouse->IsPurchased())
 	{
