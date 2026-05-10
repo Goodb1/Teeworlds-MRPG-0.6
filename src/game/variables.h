@@ -215,6 +215,8 @@ MACRO_CONFIG_INT(SvMinRating, sv_min_rating, 1000, 1000, 5000, CFGFLAG_SERVER, "
 MACRO_CONFIG_INT(SvMaxRating, sv_max_rating, 2500, 2500, 10000, CFGFLAG_SERVER, "Maximal rating player")
 MACRO_CONFIG_INT(SvRatingCoefficientBase, sv_rating_coefficient_base, 40, 5, 100, CFGFLAG_SERVER, "Coefficient rating base")
 MACRO_CONFIG_INT(SvRageQuitDecreaseRating, sv_rage_quit_decrease_rating, 50, 10, 300, CFGFLAG_SERVER, "Decrease rating by rage quit")
+MACRO_CONFIG_INT(SvHighlightExperts, sv_highlight_experts, 1, 0, 1, CFGFLAG_SERVER, "Highlight by aura experts professions.")
+
 
 // mysql
 MACRO_CONFIG_STR(SvMySqlHost, sv_sql_host, 32, "localhost", CFGFLAG_SERVER, "MySQL Host")

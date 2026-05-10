@@ -13,6 +13,54 @@ void CAccountListener::Initialize()
 	m_LevelingTracker.LoadTrackingData();
 }
 
+void CAccountListener::OnCharacterSpawn(CPlayer* pPlayer)
+{
+	if(!g_Config.m_SvHighlightExperts || pPlayer->IsBot())
+		return;
+
+	struct LevelingData
+	{
+		ProfessionIdentifier m_Identifier;
+		bool m_Projectile;
+		int m_Type;
+		int m_Subtype;
+		int m_OrbitType;
+	};
+
+	static constexpr std::array<LevelingData, (int)ProfessionIdentifier::NUM_PROFESSIONS> s_aLevelingData { {
+		{ ProfessionIdentifier::Tank,      false, POWERUP_ARMOR,  0,          MULTIPLE_ORBIT_TYPE_ELLIPTICAL },
+		{ ProfessionIdentifier::Dps,       false, POWERUP_WEAPON, WEAPON_GUN, MULTIPLE_ORBIT_TYPE_ELLIPTICAL },
+		{ ProfessionIdentifier::Healer,    false, POWERUP_HEALTH, 0,          MULTIPLE_ORBIT_TYPE_ELLIPTICAL },
+		{ ProfessionIdentifier::Miner,     true,  WEAPON_HAMMER,  0,          MULTIPLE_ORBIT_TYPE_EIGHT },
+		{ ProfessionIdentifier::Farmer,    true,  WEAPON_HAMMER,  0,          MULTIPLE_ORBIT_TYPE_DYNAMIC_CENTER },
+		{ ProfessionIdentifier::Fisherman, true,  WEAPON_HAMMER,  0,          MULTIPLE_ORBIT_TYPE_PULSATING },
+		{ ProfessionIdentifier::Loader,    true,  WEAPON_HAMMER,  0,          MULTIPLE_ORBIT_TYPE_ELLIPTICAL }
+	} };
+
+
+	bool bestExpert = false;
+	const auto AccountID = pPlayer->Account()->GetID();
+	auto ApplyLayer = [&]()
+	{
+		for(const auto& data : s_aLevelingData)
+		{
+			const auto& Biggest = m_LevelingTracker.GetTrackingData((int)data.m_Identifier);
+			if(Biggest && AccountID == (*Biggest).AccountID)
+			{
+				pPlayer->GetCharacter()->AddMultipleOrbit(data.m_Projectile, 1, data.m_Type, data.m_Subtype, data.m_OrbitType);
+				bestExpert = true;
+			}
+		}
+	};
+
+	// apply aura layer
+	ApplyLayer();
+	ApplyLayer();
+
+	if(bestExpert)
+		pPlayer->GS()->Chat(pPlayer->GetCID(), "You are the top expert in your profession on the server. Visual highlighting is now active.");
+}
+
 
 void CAccountListener::OnPlayerLogin(CPlayer* pPlayer, CAccountData* pAccount)
 {

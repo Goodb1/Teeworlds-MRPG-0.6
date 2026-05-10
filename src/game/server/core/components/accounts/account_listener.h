@@ -51,6 +51,7 @@ public:
 	CLevelingTracker& LevelingTracker() { return m_LevelingTracker; }
 
 protected:
+	void OnCharacterSpawn(CPlayer* pPlayer) override;
 	void OnPlayerLogin(CPlayer* pPlayer, CAccountData* pAccount) override;
 	void OnPlayerProfessionLeveling(CPlayer* pPlayer, CProfession* pProfession, int NewLevel) override;
 };
