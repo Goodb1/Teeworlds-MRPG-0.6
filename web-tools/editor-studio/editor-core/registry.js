@@ -239,36 +239,6 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         hidden: createField('boolean', 'Скрыть', false)
       }
     },
-    dungeon_group_lives: {
-      name: 'Dungeon: управление жизнями группы',
-      class: 'logic',
-      icon: 'fa-solid fa-heart-circle-minus',
-      desc: 'Установить / добавить / убрать жизни группы в dungeon-сценарии',
-      fields: {
-        action: createField('text', 'Операция', 'set', {
-          ui: {
-            type: 'select',
-            options: ['set', 'add', 'sub']
-          }
-        }),
-        value: createField('number', 'Количество жизней', 1, { ui: { min: 0, max: 9999 } })
-      }
-    },
-    world_group_lives: {
-      name: 'World: управление жизнями группы',
-      class: 'logic',
-      icon: 'fa-solid fa-earth-europe',
-      desc: 'Установить / добавить / убрать жизни группы в world-сценарии',
-      fields: {
-        action: createField('text', 'Операция', 'set', {
-          ui: {
-            type: 'select',
-            options: ['set', 'add', 'sub']
-          }
-        }),
-        value: createField('number', 'Количество жизней', 1, { ui: { min: 0, max: 9999 } })
-      }
-    },
     world_complete: {
       name: 'World: завершить сценарий',
       class: 'interactive',
@@ -288,6 +258,21 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         disable_group_collision: createField('boolean', 'disable_group_collision', false),
         disable_group_hooking: createField('boolean', 'disable_group_hooking', false),
         disable_group_pvp: createField('boolean', 'disable_group_pvp', false)
+      }
+    },
+	set_group_lives: {
+      name: 'Управление жизнями группы',
+      class: 'logic',
+      icon: 'fa-solid fa-earth-europe',
+      desc: 'Установить / добавить / убрать жизни группы в сценарии',
+      fields: {
+        action: createField('text', 'Операция', 'set', {
+          ui: {
+            type: 'select',
+            options: ['set', 'add', 'sub']
+          }
+        }),
+        value: createField('number', 'Количество жизней', 1, { ui: { min: 0, max: 9999 } })
       }
     },
     check_has_item: {
@@ -616,9 +601,9 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
       componentTypes: [
         ...defaultScenarioComponentTypes,
         'set_group_flags',
+        'set_group_lives',
         'dungeon_door_control',
         'dungeon_use_chat_code',
-        'dungeon_group_lives',
         'dungeon_activate_point',
         'dungeon_complete'
       ]
@@ -642,7 +627,7 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
       componentTypes: [
         ...defaultScenarioComponentTypes,
         'set_group_flags',
-        'world_group_lives',
+        'set_group_lives',
         'world_complete'
       ]
     }

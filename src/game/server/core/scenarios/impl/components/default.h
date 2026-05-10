@@ -786,4 +786,41 @@ private:
 	}
 };
 
+class ScenarioGroupLivesComponent final : public PlayerAwareComponent<ScenarioGroupFlagsComponent>
+{
+	enum class EAction { Set, Add, Subtract };
+	EAction m_Action { EAction::Set };
+	int m_Value {};
+
+public:
+	explicit ScenarioGroupLivesComponent(const nlohmann::json& j)
+	{
+		InitBaseJsonField(j);
+		const auto action = j.value("action", "set");
+		m_Value = j.value("value", 0);
+		if(action == "add")
+			m_Action = EAction::Add;
+		else if(action == "sub" || action == "subtract")
+			m_Action = EAction::Subtract;
+	}
+
+	DECLARE_COMPONENT_NAME("set_group_lives")
+
+private:
+	void OnStartImpl() override
+	{
+		if(auto* pGroupScenario = dynamic_cast<GroupScenarioBase*>(Scenario()))
+		{
+			if(m_Action == EAction::Set)
+				pGroupScenario->SetGroupLives(m_Value);
+			else if(m_Action == EAction::Add)
+				pGroupScenario->AddGroupLives(m_Value);
+			else
+				pGroupScenario->AddGroupLives(-m_Value);
+		}
+
+		Finish();
+	}
+};
+
 #endif
