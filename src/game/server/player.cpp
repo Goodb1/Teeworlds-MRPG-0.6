@@ -502,6 +502,12 @@ void CPlayer::TryRespawn()
 	int SpawnType = SPAWN_HUMAN;
 	std::optional<vec2> FinalSpawnPos = std::nullopt;
 
+	// override by scenario spawn position
+	if(auto pScenario = GS()->ScenarioGroupManager()->GetActiveScenarioByPlayer(m_ClientID); pScenario && pScenario->GetGroupSpawnPos())
+		FinalSpawnPos = pScenario->GetGroupSpawnPos();
+	else if(auto pScenario = GS()->ScenarioWorldManager()->GetActiveScenario(); pScenario && pScenario->GetGroupSpawnPos())
+		FinalSpawnPos = pScenario->GetGroupSpawnPos();
+
 	// spawn by prison
 	if(Account()->GetPrisonManager().IsInPrison())
 	{

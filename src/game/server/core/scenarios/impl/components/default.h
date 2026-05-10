@@ -37,10 +37,10 @@ protected:
 		return vpPlayers;
 	}
 
-	template<typename F>
-	void ForEachScenarioPlayer(F&& Func) const
+	void ForEachScenarioPlayer(const std::function<void(CPlayer*)>& Func) const
 	{
-		if(const auto* pGroupScenario = dynamic_cast<const GroupScenarioBase*>(Scenario()))
+		ScenarioBase* pBaseScenario = this->Scenario();
+		if(const auto* pGroupScenario = dynamic_cast<const GroupScenarioBase*>(pBaseScenario))
 		{
 			for(auto* pPlayer : pGroupScenario->GetPlayers())
 			{
@@ -48,7 +48,7 @@ protected:
 					Func(pPlayer);
 			}
 		}
-		else if(const auto* pPlayerScenario = dynamic_cast<const PlayerScenarioBase*>(Scenario()))
+		else if(const auto* pPlayerScenario = dynamic_cast<const PlayerScenarioBase*>(pBaseScenario))
 		{
 			if(auto* pPlayer = pPlayerScenario->GetPlayer())
 				Func(pPlayer);
@@ -791,7 +791,7 @@ private:
  * Scope:
  * - Supports both group scenarios (all players in group) and single-player scenarios.
  */
-class ScenarioUseChatComponent final : public PlayerAwareComponent<ScenarioGroupFlagsComponent>, public IEventListener
+class ScenarioUseChatComponent final : public PlayerAwareComponent<ScenarioUseChatComponent>, public IEventListener
 {
 	ScopedEventListener m_ListenerScope {};
 	std::string m_ChatCode {};
@@ -882,7 +882,7 @@ private:
 	}
 };
 
-class ScenarioGroupLivesComponent final : public PlayerAwareComponent<ScenarioGroupFlagsComponent>
+class ScenarioGroupLivesComponent final : public PlayerAwareComponent<ScenarioGroupLivesComponent>
 {
 	enum class EAction { Set, Add, Subtract };
 	EAction m_Action { EAction::Set };
@@ -919,5 +919,34 @@ private:
 	}
 };
 
+class ScenarioGroupSpawnComponent final : public PlayerAwareComponent<ScenarioGroupSpawnComponent>
+{
+	bool m_EnableSpawn {};
+	vec2 m_GroupSpawnPos {};
+
+public:
+	explicit ScenarioGroupSpawnComponent(const nlohmann::json& j)
+	{
+		InitBaseJsonField(j);
+		m_GroupSpawnPos = j.value("position", vec2 {});
+		m_EnableSpawn = j.value("enable_spawn", true);
+	}
+
+	DECLARE_COMPONENT_NAME("set_group_spawn")
+
+private:
+	void OnStartImpl() override
+	{
+		if(auto* pGroupScenario = dynamic_cast<GroupScenarioBase*>(Scenario()))
+		{
+			if(m_EnableSpawn)
+				pGroupScenario->SetGroupSpawnPos(m_GroupSpawnPos);
+			else
+				pGroupScenario->ResetGroupSpawnPos();
+		}
+
+		Finish();
+	}
+};
 
 #endif

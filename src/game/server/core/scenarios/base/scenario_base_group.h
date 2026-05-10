@@ -12,6 +12,7 @@ protected:
 
 	int m_GroupLives { 0 };
 	int m_GroupScenarioFlags { SCENARIOFLAG_NONE };
+	std::optional<vec2> m_GroupSpawnPos {};
 
 	bool OnPauseConditions() override;
 	bool OnStopConditions() override;
@@ -37,6 +38,10 @@ public:
 	virtual bool AddParticipant(int ClientID);
 	virtual bool RemoveParticipant(int ClientID);
 	std::set<int> GetParticipants() const { return m_vParticipantIDs; }
+
+	void SetGroupSpawnPos(vec2 Position) { m_GroupSpawnPos = Position; }
+	std::optional<vec2> GetGroupSpawnPos() const { return m_GroupSpawnPos; }
+	void ResetGroupSpawnPos() { m_GroupSpawnPos.reset(); }
 
 	int GetGroupLives() const { return m_GroupLives; }
 	void SetGroupLives(int Lives) { m_GroupLives = Lives > 0 ? Lives : 0; }

@@ -19,3 +19,4 @@ template struct ComponentRegistrar<ScenarioUseChatComponent>;
 // default group components
 template struct ComponentRegistrar<ScenarioGroupFlagsComponent>;
 template struct ComponentRegistrar<ScenarioGroupLivesComponent>;
+template struct ComponentRegistrar<ScenarioGroupSpawnComponent>;

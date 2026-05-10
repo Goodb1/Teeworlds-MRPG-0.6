@@ -267,6 +267,16 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         }),
         value: createField('number', 'Количество жизней', 1, { ui: { min: 0, max: 9999 } })
       }
+    },	
+	set_group_spawn: {
+      name: 'Точка респавна группы',
+      class: 'logic',
+      icon: 'fa-solid fa-flag',
+      desc: 'Настройка точки возраждения группы',
+      fields: {
+        enable_spawn: createField('boolean', 'Включить респавн в указаной позиции', false),
+        position: createField('vec2', 'Позиция', { x: 100, y: 100 }, { ui: { min: -99999, max: 99999, step: 0.1 } })
+      }
     },
     check_has_item: {
       name: 'Проверить предмет',
@@ -577,6 +587,7 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         ...defaultScenarioComponentTypes,
         'set_group_flags',
         'set_group_lives',
+        'set_group_spawn',
         'dungeon_door_control',
         'dungeon_activate_point',
         'dungeon_complete'
@@ -600,6 +611,7 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         ...defaultScenarioComponentTypes,
         'set_group_flags',
         'set_group_lives',
+        'set_group_spawn',
         'world_complete'
       ]
     }
