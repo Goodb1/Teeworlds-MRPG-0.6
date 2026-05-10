@@ -678,6 +678,24 @@
 
     renderTypeFilterOptions();
 
+    const getTypeIcon = (typeValue) => {
+      const type = String(typeValue || '').toLowerCase();
+      if (!type || type === 'default') return '📦';
+      if (type.includes('potion')) return '🧪';
+	  if (type.includes('title')) return '🔖';
+	  if (type.includes('eidolon')) return '🐾';
+      if (type.includes('helmet')) return '🪖';
+      if (type.includes('armor')) return '🥋';
+      if (type.includes('gloves')) return '🧤';
+      if (type.includes('fishrod')) return '🎣';
+      if (type.includes('rake')) return '🪓';
+      if (type.includes('pickaxe')) return '⛏️';
+      if (type.includes('hammer') || type.includes('gun') || type.includes('rifle') || type.includes('grenade') || type.includes('shotgun')) return '🗡️';
+      if (type.includes('use')) return '🖐️';
+      if (type.includes('resource')) return '🌿️';
+      return '📦';
+    };
+
     const editor = EditorCore.DbEditor.mount(document.body, {
       resource: 'items',
       fields: itemFields,
@@ -796,7 +814,7 @@
         });
       },
       listItem: (row) => ({
-        title: row?.Name || `Предмет #${row?.ID || 0}`,
+        title: `${getTypeIcon(row?.Type)} ${row?.Name || `Предмет #${row?.ID || 0}`}`,
         subtitle: `${row?.Group || '—'} · ID ${row?.ID ?? '—'}`,
       }),
       getTitle: (model, id) => (id ? `Предмет: ${model?.Name || `#${id}`}` : 'Новый предмет'),
