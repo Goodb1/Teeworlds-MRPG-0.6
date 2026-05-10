@@ -186,9 +186,12 @@ int CPlayerBot::CalculateAttribute(AttributeIdentifier ID, int PowerLevel, bool 
 	if(!pAttribute)
 		return 0;
 
-	int AttributeValue = 0;
+	// dissable lucky (miss damage)
+	if(ID == AttributeIdentifier::Lucky)
+		return 0;
 
 	// from equipment
+	int AttributeValue = 0;
 	for(unsigned i = 0; i < (unsigned)ItemType::NUM_EQUIPPED; i++)
 	{
 		if(const auto ItemID = GetEquippedSlotItemID((ItemType)i))
