@@ -120,13 +120,6 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         world_id: createDbSelect('Мир', 0, 'world', { ui: { placeholder: '— выберите мир —' } })
       }
     },
-    use_chat_task: {
-      name: 'Задача на чат',
-      icon: 'fa-keyboard',
-      fields: {
-        chat: createField('text', 'Чат', '', { ui: { placeholder: 'Введите текст для чата', format: 'textarea' } })
-      }
-    },
     fix_cam: {
       name: 'Фиксировать камеру',
       icon: 'fa-camera',
@@ -228,11 +221,11 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         key: createField('text', 'Ключ', '', { ui: { placeholder: 'Введите ключ двери' } })
       }
     },
-    dungeon_use_chat_code: {
-      name: 'Dungeon: код в чате',
+    use_chat_code: {
+      name: 'Код в чате',
       class: 'interactive',
       icon: 'fa-solid fa-key',
-      desc: 'Условие чата dungeon-сценария',
+      desc: 'Условие текста в чате',
       fields: {
         code: createField('text', 'Код', 'secret', { ui: { placeholder: 'Введите кодовое слово' } }),
         next_step_id: createField('text', 'Следующий шаг', ''),
@@ -373,15 +366,6 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         }),
         position: createField('vec2', 'Позиция', { x: 100, y: 100 }, { ui: { min: -99999, max: 99999, step: 0.1 } }),
         key: createField('text', 'Ключ', '', { ui: { placeholder: 'Введите ключ двери' } })
-      }
-    },
-    universal_use_chat: {
-      name: 'Universal: код в чате',
-      class: 'interactive',
-      icon: 'fa-solid fa-key',
-      desc: 'Ожидание команды в чате',
-      fields: {
-        chat: createField('text', 'Текст в чате', '/rules', { ui: { placeholder: 'Введите ожидаемую команду' } })
       }
     },
     universal_condition_item: {
@@ -577,6 +561,7 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
 
   const defaultScenarioComponentTypes = [
     'branch_random',
+    'use_chat_code',
     'message',
     'wait',
     'follow_camera',
@@ -603,7 +588,6 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         'set_group_flags',
         'set_group_lives',
         'dungeon_door_control',
-        'dungeon_use_chat_code',
         'dungeon_activate_point',
         'dungeon_complete'
       ]
@@ -614,7 +598,6 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
       componentTypes: [
         ...defaultScenarioComponentTypes,
         'universal_door_control',
-        'universal_use_chat',
         'universal_condition_item',
         'universal_teleport',
         'universal_pick_item_task',

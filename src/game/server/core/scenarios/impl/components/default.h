@@ -36,6 +36,24 @@ protected:
 		}
 		return vpPlayers;
 	}
+
+	template<typename F>
+	void ForEachScenarioPlayer(F&& Func) const
+	{
+		if(const auto* pGroupScenario = dynamic_cast<const GroupScenarioBase*>(Scenario()))
+		{
+			for(auto* pPlayer : pGroupScenario->GetPlayers())
+			{
+				if(pPlayer)
+					Func(pPlayer);
+			}
+		}
+		else if(const auto* pPlayerScenario = dynamic_cast<const PlayerScenarioBase*>(Scenario()))
+		{
+			if(auto* pPlayer = pPlayerScenario->GetPlayer())
+				Func(pPlayer);
+		}
+	}
 };
 
 /**
@@ -757,6 +775,84 @@ private:
 	}
 };
 
+/**
+ * @class ScenarioUseChatComponent
+ * @brief A component that requires players to write a specific message in chat to complete the scenario.
+ *
+ * The component is configured via a JSON object with the following fields:
+ * @param code (string): The exact chat message that must be written by the player(s) to complete the objective.
+ * @param hidden (bool): If true, the objective message will not be broadcast to players.
+ *
+ * Behavior:
+ * - Periodically broadcasts the objective text to players (if not hidden).
+ * - Listens for player chat events.
+ * - Completes the scenario when a player writes the exact required message.
+ *
+ * Scope:
+ * - Supports both group scenarios (all players in group) and single-player scenarios.
+ */
+class ScenarioUseChatComponent final : public PlayerAwareComponent<ScenarioGroupFlagsComponent>, public IEventListener
+{
+	ScopedEventListener m_ListenerScope {};
+	std::string m_ChatCode {};
+	bool m_Hidden {};
+
+public:
+	explicit ScenarioUseChatComponent(const nlohmann::json& j)
+	{
+		InitBaseJsonField(j);
+		m_ChatCode = j.value("code", "");
+		m_Hidden = j.value("hidden", true);
+		m_ListenerScope.Init(this, IEventListener::PlayerChat);
+	}
+
+	DECLARE_COMPONENT_NAME("use_chat_code")
+
+private:
+	void OnStartImpl() override
+	{
+		m_ListenerScope.Register();
+	}
+
+	void OnActiveImpl() override
+	{
+		if(m_Hidden || Server()->Tick() % Server()->TickSpeed() != 0)
+			return;
+
+		// send broadcast information
+		ForEachScenarioPlayer([this](CPlayer* pPlayer)
+		{
+			GS()->Broadcast(pPlayer->GetCID(), BroadcastPriority::GameAlert, Server()->TickSpeed(), "Objective: Write in the chat '{}'", m_ChatCode);
+		});
+	}
+
+	void OnPlayerChat(CPlayer* pFrom, const char* pMessage) override
+	{
+		if(std::string_view(pMessage) != m_ChatCode)
+			return;
+
+		// check valid player
+		bool ValidPlayer = false;
+		ForEachScenarioPlayer([&](CPlayer* pPlayer)
+		{
+			if(pPlayer->GetCID() == pFrom->GetCID())
+				ValidPlayer = true;
+		});
+
+		if(ValidPlayer)
+			Finish();
+	}
+
+	void OnEndImpl() override
+	{
+		m_ListenerScope.Unregister();
+	}
+};
+
+
+/*
+***************************** DEFAULT GROUP
+*/
 class ScenarioGroupFlagsComponent final : public PlayerAwareComponent<ScenarioGroupFlagsComponent>
 {
 	int m_FlagsToApply { GroupScenarioBase::SCENARIOFLAG_NONE };
@@ -822,5 +918,6 @@ private:
 		Finish();
 	}
 };
+
 
 #endif

@@ -44,42 +44,6 @@ namespace
 		}
 	};
 
-	class UniversalUseChatComponent final : public Component<CUniversalScenario, UniversalUseChatComponent>, public IEventListener
-	{
-		ScopedEventListener m_ListenerScope {};
-		std::string m_ChatCode {};
-
-	public:
-		explicit UniversalUseChatComponent(const nlohmann::json& j)
-		{
-			InitBaseJsonField(j);
-			m_ChatCode = j.value("chat", "@");
-			m_ListenerScope.Init(this, IEventListener::PlayerChat);
-		}
-
-		DECLARE_COMPONENT_NAME("universal_use_chat")
-
-	private:
-		void OnStartImpl() override { m_ListenerScope.Register(); }
-
-		void OnActiveImpl() override
-		{
-			if(Server()->Tick() % Server()->TickSpeed() == 0)
-				GS()->Broadcast(Scenario()->GetClientID(), BroadcastPriority::GameAlert, Server()->TickSpeed(), "Objective: Write in the chat: '{}'", m_ChatCode);
-		}
-
-		void OnPlayerChat(CPlayer* pFrom, const char* pMessage) override
-		{
-			if(!pFrom || pFrom->GetCID() != Scenario()->GetClientID())
-				return;
-
-			if(std::string_view(pMessage).find(m_ChatCode) == 0)
-				Finish();
-		}
-
-		void OnEndImpl() override { m_ListenerScope.Unregister(); }
-	};
-
 	class UniversalConditionItemComponent final : public Component<CUniversalScenario, UniversalConditionItemComponent>
 	{
 		int m_ItemID {};
@@ -263,7 +227,6 @@ namespace
 }
 
 template struct ComponentRegistrar<UniversalDoorControlComponent>;
-template struct ComponentRegistrar<UniversalUseChatComponent>;
 template struct ComponentRegistrar<UniversalConditionItemComponent>;
 template struct ComponentRegistrar<UniversalTeleportComponent>;
 template struct ComponentRegistrar<UniversalPickItemTaskComponent>;

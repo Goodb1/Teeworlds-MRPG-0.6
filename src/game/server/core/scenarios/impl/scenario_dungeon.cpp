@@ -43,51 +43,6 @@ private:
 };
 template struct ComponentRegistrar<DoorControlComponent>;
 
-class UseChatComponent final : public Component<CDungeonScenario, UseChatComponent>, public IEventListener
-{
-	ScopedEventListener m_ListenerScope {};
-	std::string m_ChatCode {};
-	bool m_Hidden {};
-
-public:
-	explicit UseChatComponent(const nlohmann::json& j)
-	{
-		InitBaseJsonField(j);
-		m_ChatCode = j.value("code", "");
-		m_Hidden = j.value("hidden", true);
-		m_ListenerScope.Init(this, IEventListener::PlayerChat);
-	}
-
-    DECLARE_COMPONENT_NAME("dungeon_use_chat_code")
-
-private:
-	void OnStartImpl() override
-	{
-		m_ListenerScope.Register();
-	}
-
-	void OnActiveImpl() override
-	{
-		if(m_Hidden || Server()->Tick() % Server()->TickSpeed() != 0)
-			return;
-
-		for(auto& CID : Scenario()->GetParticipants())
-			GS()->Broadcast(CID, BroadcastPriority::GameAlert, Server()->TickSpeed(), "Objective: Write in the chat '{}'", m_ChatCode);
-	}
-
-	void OnPlayerChat(CPlayer* pFrom, const char* pMessage) override
-	{
-		if(Scenario()->HasPlayer(pFrom) && std::string_view(pMessage) == m_ChatCode)
-			Finish();
-	}
-
-	void OnEndImpl() override
-	{
-		m_ListenerScope.Unregister();
-	}
-};
-template struct ComponentRegistrar<UseChatComponent>;
-
 struct ActivatePointComponent final : public Component<GroupScenarioBase, ActivatePointComponent>
 {
 	vec2 m_Position {};
@@ -217,41 +172,6 @@ private:
 	}
 };
 template struct ComponentRegistrar<CompleteDungeonComponent>;
-
-class DungeonGroupLivesComponent final : public Component<GroupScenarioBase, DungeonGroupLivesComponent>
-{
-	enum class EAction { Set, Add, Subtract };
-	EAction m_Action { EAction::Set };
-	int m_Value {};
-
-public:
-	explicit DungeonGroupLivesComponent(const nlohmann::json& j)
-	{
-		InitBaseJsonField(j);
-		const auto action = j.value("action", "set");
-		m_Value = j.value("value", 0);
-		if(action == "add")
-			m_Action = EAction::Add;
-		else if(action == "sub" || action == "subtract")
-			m_Action = EAction::Subtract;
-	}
-
-	DECLARE_COMPONENT_NAME("dungeon_group_lives")
-
-private:
-	void OnStartImpl() override
-	{
-		if(m_Action == EAction::Set)
-			Scenario()->SetGroupLives(m_Value);
-		else if(m_Action == EAction::Add)
-			Scenario()->AddGroupLives(m_Value);
-		else
-			Scenario()->AddGroupLives(-m_Value);
-
-		Finish();
-	}
-};
-template struct ComponentRegistrar<DungeonGroupLivesComponent>;
 
 CDungeonScenario::CDungeonScenario(const nlohmann::json& jsonData) : GroupScenarioBase(), m_JsonData(jsonData)
 {
