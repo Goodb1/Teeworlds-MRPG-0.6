@@ -30,20 +30,20 @@ CGameControllerDungeon::~CGameControllerDungeon()
 
 void CGameControllerDungeon::FinishDungeon()
 {
-	ChangeState(CDungeonData::STATE_FINISHED);
+	ChangeState(CDungeonData::STATE_FINISH);
 }
 
-void CGameControllerDungeon::ChangeState(int State)
+void CGameControllerDungeon::ChangeState(int NewState)
 {
 	const auto CurrentState = m_pDungeon->GetState();
-	if(State == CurrentState)
+	if(NewState == CurrentState)
 		return;
 
 	// update dungeon state
-	m_pDungeon->SetState(State);
+	m_pDungeon->SetState(NewState);
 
 	// inactive state
-	if(State == CDungeonData::STATE_INACTIVE)
+	if(NewState == CDungeonData::STATE_INACTIVE)
 	{
 		// update
 		m_EndTick = 0;
@@ -51,41 +51,53 @@ void CGameControllerDungeon::ChangeState(int State)
 		m_LastWarmupTick = 0;
 		m_ScenarioID = 0;
 		m_StartedPlayersNum = 0;
+		m_SafeSpawnTick = 0;
 		m_pEntWaitingDoor->Close();
 	}
 
 	// waiting state
-	else if(State == CDungeonData::STATE_WAITING)
+	else if(NewState == CDungeonData::STATE_WAITING)
 	{
 		// update
 		m_WarmupTick = Server()->TickSpeed() * g_Config.m_SvDutiesWarmup;
 	}
 
 	// started state
-	else if(State == CDungeonData::STATE_STARTED)
+	else if(NewState == CDungeonData::STATE_ACTIVE)
 	{
-		// update start time
+		// update & initialize by state start
+		m_ScenarioID = GS()->ScenarioGroupManager()->RegisterScenario<CDungeonScenario>(-1, m_pDungeon->GetScenario());
+		m_StartedPlayersNum = GetPlayersNum();
+		m_EndTick = Server()->TickSpeed() * 600;
+		m_SafeSpawnTick = Server()->Tick() + (Server()->TickSpeed() * g_Config.m_SvDungeonSafeTime);
+		m_pEntWaitingDoor->Open();
+
+		// assert
+		dbg_assert(m_ScenarioID != -1, "failed to register dungeon scenario");
+
+		// add players to dungeon scenario
+		auto pScenario = GS()->ScenarioGroupManager()->GetScenario(m_ScenarioID);
 		for(int i = 0; i < MAX_PLAYERS; i++)
 		{
 			auto* pPlayer = GS()->GetPlayer(i);
 			if(pPlayer && GS()->IsPlayerInWorld(i, m_pDungeon->GetWorldID()))
+			{
+				pScenario->AddParticipant(i);
 				pPlayer->GetSharedData().m_TempStartDungeonTick = Server()->Tick();
+			}
 		}
 
-		// update
-		m_StartedPlayersNum = GetPlayersNum();
-		m_EndTick = Server()->TickSpeed() * 600;
-		m_pEntWaitingDoor->Open();
 		KillAllPlayers();
 
 		// information
 		const auto WorldID = m_pDungeon->GetWorldID();
 		GS()->ChatWorld(WorldID, "Dungeon:", "You are given 10 minutes to complete of dungeon!");
+		GS()->ChatWorld(WorldID, "Dungeon:", "Safe time is active for {} seconds.", (int)g_Config.m_SvDungeonSafeTime);
 		GS()->BroadcastWorld(WorldID, BroadcastPriority::VeryImportant, 500, "Dungeon started!");
 	}
 
 	// finish state
-	else if(State == CDungeonData::STATE_FINISHED)
+	else if(NewState == CDungeonData::STATE_FINISH)
 	{
 		// update
 		m_EndTick = Server()->TickSpeed() * 20;
@@ -150,7 +162,7 @@ void CGameControllerDungeon::Process()
 			m_WarmupTick--;
 			if(!m_WarmupTick)
 			{
-				ChangeState(CDungeonData::STATE_STARTED);
+				ChangeState(CDungeonData::STATE_ACTIVE);
 			}
 		}
 
@@ -158,7 +170,7 @@ void CGameControllerDungeon::Process()
 	}
 
 	// finished
-	else if(State == CDungeonData::STATE_FINISHED)
+	else if(State == CDungeonData::STATE_FINISH)
 	{
 		if(m_EndTick)
 		{
@@ -175,6 +187,22 @@ void CGameControllerDungeon::Process()
 
 void CGameControllerDungeon::OnCharacterDeath(CPlayer* pVictim, CPlayer* pKiller, int Weapon)
 {
+	const auto State = m_pDungeon->GetState();
+	const int VictimCID = pVictim->GetCID();
+
+	// remove dungeon lives
+	if(State >= CDungeonData::STATE_ACTIVE && m_SafeSpawnTick < Server()->Tick())
+	{
+		auto pScenario = GS()->ScenarioGroupManager()->GetScenario(m_ScenarioID);
+		if(pScenario)
+		{
+			if(pScenario->ConsumeGroupLife())
+				GS()->ChatWorld(GS()->GetWorldID(), "Dungeon scenario", "Group lives left: {}.", pScenario->GetGroupLives());
+			else
+				pScenario->RemoveParticipant(VictimCID);
+		}
+	}
+
 	CGameControllerDefault::OnCharacterDeath(pVictim, pKiller, Weapon);
 }
 
@@ -184,27 +212,21 @@ bool CGameControllerDungeon::OnCharacterSpawn(CCharacter* pChr)
 	auto* pPlayer = pChr->GetPlayer();
 	const int ClientID = pPlayer->GetCID();
 
-	if(State >= CDungeonData::STATE_STARTED)
+	// check dungeon state and lives for thrown out of dungeon
+	if(State >= CDungeonData::STATE_ACTIVE && m_SafeSpawnTick < Server()->Tick())
 	{
-		// register scenario only once per dungeon run
 		auto pScenario = GS()->ScenarioGroupManager()->GetScenario(m_ScenarioID);
-		if(m_ScenarioID <= 0)
-		{
-			m_ScenarioID = GS()->ScenarioGroupManager()->RegisterScenario<CDungeonScenario>(ClientID, m_pDungeon->GetScenario());
-			pScenario = GS()->ScenarioGroupManager()->GetScenario(m_ScenarioID);
-		}
-		else if(pScenario)
-			pScenario->AddParticipant(ClientID);
-
-		// scenario is no longer active is out of lives/participation or finish
-		const bool DungeonFinished = (State == CDungeonData::STATE_FINISHED);
-		if(!pScenario || DungeonFinished)
+		const bool DungeonFinished = (State == CDungeonData::STATE_FINISH);
+		const bool NoGroupLives = pScenario && pScenario->GetGroupLives() <= 0;
+		if(!pScenario || DungeonFinished || NoGroupLives)
 		{
 			GS()->Chat(ClientID, "You were thrown out of dungeon!");
-			const int LatestCorrectWorldID = GS()->Core()->AccountManager()->GetLastVisitedWorldID(pPlayer);
-			pPlayer->ChangeWorld(LatestCorrectWorldID);
+
 			if(pScenario)
 				pScenario->RemoveParticipant(ClientID);
+
+			const int LatestCorrectWorldID = GS()->Core()->AccountManager()->GetLastVisitedWorldID(pPlayer);
+			pPlayer->ChangeWorld(LatestCorrectWorldID);
 			return false;
 		}
 

@@ -24,22 +24,29 @@ public:
 	template<typename T, typename... Args>
 	int RegisterScenario(int ClientID, Args&&... args) requires std::derived_from<T, GroupScenarioBase>
 	{
-		int scenarioID = m_NextScenarioID++;
 		auto pScenario = std::make_shared<T>(std::forward<Args>(args)...);
 
 		pScenario->m_pGS = m_pGS;
-		pScenario->m_ScenarioID = scenarioID;
 
-		if(!pScenario->AddParticipant(ClientID)) return -1;
+		if(ClientID > -1 && ClientID < MAX_PLAYERS)
+		{
+			if(!pScenario->AddParticipant(ClientID))
+				return -1;
+		}
 
 		pScenario->Start();
 
-		if(!pScenario->IsRunning()) return -1;
+		if(!pScenario->IsRunning())
+			return -1;
 
-		auto [it, inserted] = m_vScenarios.emplace(scenarioID, pScenario);
-		if(!inserted) return -1;
+		const int ScenarioID = m_NextScenarioID;
+		auto [it, inserted] = m_vScenarios.emplace(ScenarioID, pScenario);
+		if(!inserted)
+			return -1;
 
-		return scenarioID;
+		pScenario->m_ScenarioID = ScenarioID;
+		++m_NextScenarioID;
+		return ScenarioID;
 	}
 
 	void UpdateScenarios();

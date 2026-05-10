@@ -147,12 +147,12 @@ void CGameControllerRhythm::Tick()
 
 		if(CurrentTick > m_EndTick)
 		{
-			ChangeState(EStageState::STATE_FINISHED);
+			ChangeState(EStageState::STATE_FINISH);
 			GS()->ChatWorld(GS()->GetWorldID(), nullptr, "Rhythm round finished.");
 		}
 
 	}
-	else if(m_State == EStageState::STATE_FINISHED)
+	else if(m_State == EStageState::STATE_FINISH)
 	{
 		if(!m_ResultsSaved)
 		{
@@ -297,7 +297,7 @@ void CGameControllerRhythm::ChangeState(EStageState State)
 	}
 
 	// finished
-	if(m_State == EStageState::STATE_FINISHED)
+	if(m_State == EStageState::STATE_FINISH)
 	{
 		m_FinishTick = Server()->TickSpeed() * 10;
 		return;

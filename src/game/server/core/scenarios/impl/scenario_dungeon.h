@@ -6,7 +6,7 @@
 #include <game/server/core/entities/logic/base_door.h>
 #include <game/server/core/tools/event_listener.h>
 
-class CDungeonScenario final : public GroupScenarioBase, public IEventListener
+class CDungeonScenario final : public GroupScenarioBase
 {
 	nlohmann::json m_JsonData {};
 	ScopedEventListener m_EventListener {};
@@ -28,7 +28,6 @@ protected:
 	void ProcessStep(const nlohmann::json& step);
 	void OnScenarioStart() override;
 	void OnScenarioEnd() override;
-	void OnCharacterDeath(CPlayer* pVictim, CPlayer* pKiller, int Weapon) override;
 };
 
 #endif

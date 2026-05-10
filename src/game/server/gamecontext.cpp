@@ -1679,7 +1679,7 @@ bool CGS::IsDutyStarted() const
 	if(typeWorld == WorldType::Dungeon)
 	{
 		auto pController = dynamic_cast<CGameControllerDungeon*>(m_pController);
-		return pController && pController->GetDungeon()->GetState() >= CDungeonData::STATE_STARTED;
+		return pController && pController->GetDungeon()->GetState() >= CDungeonData::STATE_ACTIVE;
 	}
 	else if(typeWorld == WorldType::Rhythm)
 	{

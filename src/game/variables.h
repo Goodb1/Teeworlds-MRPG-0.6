@@ -143,6 +143,8 @@ MACRO_CONFIG_INT(SvDutiesWarmup, sv_duties_warmup, 180, 0, 1020, CFGFLAG_SERVER,
 // -----------------------
 MACRO_CONFIG_INT(SvDungeonExpMultiplier, sv_dungeon_exp_multiplier, 500, 100, 1000, CFGFLAG_SERVER, "Experience multiplier for completing raid dungeons (percent)")
 MACRO_CONFIG_INT(SvDungeonGoldMultiplier, sv_dungeon_gold_multiplier, 500, 100, 1000, CFGFLAG_SERVER, "Gold multiplier for completing raid dungeons (percent)")
+MACRO_CONFIG_INT(SvDungeonSafeTime, sv_dungeon_safe_time, 20, 10, 100, CFGFLAG_SERVER, "Dungeon safe time in seconds");
+
 
 // -----------------------
 // Auction System Configuration

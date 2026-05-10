@@ -274,25 +274,12 @@ void CDungeonScenario::OnSetupScenario()
 
 void CDungeonScenario::OnScenarioStart()
 {
-	m_EventListener.Init(this, IEventListener::CharacterDeath);
-	m_EventListener.Register();
 }
 
 void CDungeonScenario::OnScenarioEnd()
 {
 	m_EventListener.Unregister();
 	GroupScenarioBase::OnScenarioEnd();
-}
-
-void CDungeonScenario::OnCharacterDeath(CPlayer* pVictim, CPlayer* pKiller, int Weapon)
-{
-	if(!pVictim || pVictim->IsBot() || !HasPlayer(pVictim))
-		return;
-
-	if(ConsumeGroupLife())
-		GS()->ChatWorld(GS()->GetWorldID(), "Dungeon scenario", "Group lives left: {}.", GetGroupLives());
-	else
-		RemoveParticipant(pVictim->GetCID());
 }
 
 void CDungeonScenario::ProcessStep(const nlohmann::json& stepJson)

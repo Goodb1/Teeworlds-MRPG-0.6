@@ -20,7 +20,7 @@ class CGameControllerDungeon : public CGameControllerDefault
 	int m_WarmupTick {};
 	int m_EndTick {};
 	int m_ShiftRoundStartTick {};
-	bool m_EjectPlayersOnSpawn {};
+	int m_SafeSpawnTick {};
 
 public:
 	CGameControllerDungeon(class CGS* pGS, CDungeonData* pDungeon);

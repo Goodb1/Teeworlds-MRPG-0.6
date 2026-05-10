@@ -22,7 +22,7 @@ private:
 		STATE_WAIT,
 		STATE_WARMUP,
 		STATE_ACTIVE,
-		STATE_FINISHED,
+		STATE_FINISH,
 	};
 
 	struct CNote

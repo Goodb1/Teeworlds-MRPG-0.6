@@ -23,8 +23,8 @@ public:
 		STATE_UNINITIALIZED = -1,
 		STATE_INACTIVE,
 		STATE_WAITING,
-		STATE_STARTED,
-		STATE_FINISHED,
+		STATE_ACTIVE,
+		STATE_FINISH,
 	};
 
 	static CDungeonData* CreateElement(int ID)
@@ -54,7 +54,7 @@ public:
 	void UpdatePlayers(int Players) { m_Players = Players; }
 
 	const nlohmann::json& GetScenario() const { return m_Scenario; }
-	bool IsPlaying() const { return m_State >= STATE_STARTED; }
+	bool IsPlaying() const { return m_State >= STATE_ACTIVE; }
 	int GetProgress() const { return m_Progress; }
 	int GetPlayersNum() const { return m_Players; }
 };
