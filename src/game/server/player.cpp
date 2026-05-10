@@ -189,7 +189,7 @@ void CPlayer::Tick()
 			const int FinalRewardCoins = maximum(RewardCoins, RewardCoins * StreakMultiplier);
 
 			// active session streak reward
-			pActCoin->Add(FinalRewardCoins, 0, 0, false);
+			pActCoin->Add(FinalRewardCoins, 0, 0, 0, false);
 			GS()->Chat(m_ClientID, "You received '{} {}({$})'. Activity streak: {}x.",
 				pActCoin->Info()->GetName(), FinalRewardCoins, pActCoin->GetValue(), StreakMultiplier);
 

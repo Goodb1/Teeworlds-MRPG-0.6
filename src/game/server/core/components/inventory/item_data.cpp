@@ -206,7 +206,7 @@ bool CPlayerItem::SetValue(int Value)
 	}
 	else if(m_Value < Value)
 	{
-		Changes = Add((Value - m_Value), m_Settings, m_Enchant, false);
+		Changes = Add((Value - m_Value), m_Settings, m_Enchant, m_ExpiresAt, false);
 	}
 
 	return Changes;
@@ -276,7 +276,7 @@ bool CPlayerItem::IsEquipped() const
 	return false;
 }
 
-bool CPlayerItem::Add(int Value, int StartSettings, int StartEnchant, bool Message)
+bool CPlayerItem::Add(int Value, int StartSettings, int StartEnchant, time_t StartExpiresAt, bool Message)
 {
 	if(Value < 1)
 		return false;
@@ -310,6 +310,7 @@ bool CPlayerItem::Add(int Value, int StartSettings, int StartEnchant, bool Messa
 	{
 		m_Enchant = StartEnchant;
 		m_Settings = StartSettings;
+		m_ExpiresAt = StartExpiresAt;
 		pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_GOT, Info()->GetScenarioMode());
 	}
 

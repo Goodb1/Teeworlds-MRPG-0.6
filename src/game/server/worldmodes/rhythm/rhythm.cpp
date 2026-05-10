@@ -698,7 +698,7 @@ void CGameControllerRhythm::SaveRhythmResults()
 
 		// give material
 		const int MaterialReward = maximum(1, Points / 3);
-		pPlayer->GetItem(itMaterial)->Add(MaterialReward, 0, 0, false);
+		pPlayer->GetItem(itMaterial)->Add(MaterialReward, 0, 0, 0, false);
 		GS()->Chat(ClientID, "You received {} materials for completing Rhythm!", MaterialReward);
 
 		// update

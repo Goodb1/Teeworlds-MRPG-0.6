@@ -215,7 +215,7 @@ bool CMailboxManager::AcceptMail(CPlayer* pPlayer, int MailID)
 		}
 		else
 		{
-			pPlayerItem->Add(pItem.GetValue(), 0, pItem.GetEnchant());
+			pPlayerItem->Add(pItem.GetValue(), 0, pItem.GetEnchant(), pItem.GetExpiresAt(), true);
 			GS()->Chat(pPlayer->GetCID(), "Item received: {}.", pItem.Info()->GetName());
 		}
 	}

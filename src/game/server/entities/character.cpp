@@ -1626,7 +1626,7 @@ void CCharacter::HandleTilesImpl(int Index)
 		{
 			auto* pNewbieTitle = m_pPlayer->GetItem(itTittleNewbie);
 			if(!pNewbieTitle->HasItem())
-				pNewbieTitle->Add(1, 0, 0, false);
+				pNewbieTitle->Add(1, 0, 0, 0, false);
 
 			GS()->Core()->QuestManager()->SkipTutorialQuests(m_pPlayer);
 
