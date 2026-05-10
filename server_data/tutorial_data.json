@@ -235,7 +235,7 @@
             "x": 267,
             "y": 1594
           },
-          "type": "universal_teleport",
+          "type": "teleport",
           "world_id": 0
         }
       ],
@@ -557,7 +557,7 @@
             "x": 264,
             "y": 2001
           },
-          "type": "universal_teleport"
+          "type": "teleport"
         },
         {
           "type": "message",
@@ -706,7 +706,7 @@
             "x": 2762,
             "y": 1201
           },
-          "type": "universal_teleport"
+          "type": "teleport"
         },
         {
           "type": "message",

@@ -2145,7 +2145,6 @@
                         case 'follow_camera': return `К точке (<b>${data.position?.x}, ${data.position?.y}</b>), ${data.smooth ? 'плавно' : 'резко'}`;
                         case 'condition_movement': return `Прийти в точку (<b>${data.position?.x}, ${data.position?.y}</b>), ${data.entire_group ? 'вся группа' : 'один игрок'}`;
                         case 'teleport': return `В точку (<b>${data.position?.x}, ${data.position?.y}</b>)`;
-                        case 'universal_teleport': return `В точку (<b>${data.position?.x}, ${data.position?.y}</b>) / мир <b>${data.world_id ?? -1}</b>`;
                         case 'universal_door_control': return `Действие: <b>${data.action}</b>, Ключ: <b>${data.key || 'нет'}</b>`;
                         case 'dungeon_activate_point': return `Текст: "<b>${data.action_text || ''}</b>", Время: <b>${data.duration}</b> сек.`;
                         case 'dungeon_complete': return `Завершение темницы`;

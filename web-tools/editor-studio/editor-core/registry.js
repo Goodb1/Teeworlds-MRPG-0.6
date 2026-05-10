@@ -406,16 +406,6 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         entire_group: createField('boolean', 'Требовать для всей группы', false)
       }
     },
-    universal_teleport: {
-      name: 'Universal: телепорт',
-      class: 'interactive',
-      icon: 'fa-solid fa-bolt',
-      desc: 'Телепорт/смена мира',
-      fields: {
-        position: createField('vec2', 'Позиция', { x: 1497, y: 529 }, { ui: { min: -99999, max: 99999, step: 0.1 } }),
-        world_id: createField('number', 'ID мира', -1, { ui: { min: -1, max: 999999 } })
-      }
-    },
     universal_pick_item_task: {
       name: 'Universal: задача подбора',
       class: 'interactive',
@@ -599,7 +589,6 @@ const createDbSelect = (label, defaultValue, dbKey, { ui = {}, validate = null, 
         ...defaultScenarioComponentTypes,
         'universal_door_control',
         'universal_condition_item',
-        'universal_teleport',
         'universal_pick_item_task',
         'universal_shootmarkers'
       ]

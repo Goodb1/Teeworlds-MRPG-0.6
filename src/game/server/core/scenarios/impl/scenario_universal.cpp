@@ -87,42 +87,6 @@ namespace
 		}
 	};
 
-	class UniversalTeleportComponent final : public Component<CUniversalScenario, UniversalTeleportComponent>
-	{
-		vec2 m_Pos {};
-		int m_WorldID {};
-
-	public:
-		explicit UniversalTeleportComponent(const nlohmann::json& j)
-		{
-			InitBaseJsonField(j);
-			m_Pos = j.value("position", vec2 {});
-			m_WorldID = j.value("world_id", -1);
-		}
-
-		DECLARE_COMPONENT_NAME("universal_teleport")
-
-	private:
-		void OnActiveImpl() override
-		{
-			if(GetExecutionTimeTick() <= 0)
-				Finish();
-		}
-
-		void OnEndImpl() override
-		{
-			auto* pPlayer = Scenario()->GetPlayer();
-			if(!pPlayer || !pPlayer->GetCharacter())
-				return;
-
-			if(m_WorldID >= 0 && !GS()->IsPlayerInWorld(Scenario()->GetClientID(), m_WorldID))
-				pPlayer->ChangeWorld(m_WorldID, m_Pos);
-			else
-				pPlayer->GetCharacter()->ChangePosition(m_Pos);
-			pPlayer->m_VotesData.UpdateCurrentVotes();
-		}
-	};
-
 	class UniversalPickItemTaskComponent final : public Component<CUniversalScenario, UniversalPickItemTaskComponent>
 	{
 		vec2 m_Pos {};
@@ -228,7 +192,6 @@ namespace
 
 template struct ComponentRegistrar<UniversalDoorControlComponent>;
 template struct ComponentRegistrar<UniversalConditionItemComponent>;
-template struct ComponentRegistrar<UniversalTeleportComponent>;
 template struct ComponentRegistrar<UniversalPickItemTaskComponent>;
 template struct ComponentRegistrar<UniversalShootmarkersComponent>;
 
