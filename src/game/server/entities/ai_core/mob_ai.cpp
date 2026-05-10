@@ -126,9 +126,10 @@ void CMobAI::OnRewardPlayer(CPlayer* pPlayer, vec2 Force) const
 			}
 
 			// item's -> direct inventory
-			if(g_Config.m_SvDropDirectToInventory && random_float(100.0f) < FinalChance)
+			if(g_Config.m_SvDropDirectToInventory)
 			{
-				pPlayer->GetItem(DropID)->Add(DropValue);
+				if(random_float(100.0f) < FinalChance)
+					pPlayer->GetItem(DropID)->Add(DropValue);
 				continue;
 			}
 
