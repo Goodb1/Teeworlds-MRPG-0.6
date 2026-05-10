@@ -2,6 +2,7 @@
 #include "components/default.h"
 #include <game/server/core/scenarios/base/component_registry.h>
 #include <game/server/player.h>
+#include <generated/server_data.h>
 
 class WorldGroupLivesComponent final : public Component<GroupScenarioBase, WorldGroupLivesComponent>
 {
@@ -54,14 +55,15 @@ public:
 private:
 	void OnStartImpl() override
 	{
-		if(m_Successful)
+		for(const int ClientID : Scenario()->GetParticipants())
 		{
-			for(const int ClientID : Scenario()->GetParticipants())
-			{
-				auto* pPlayer = GS()->GetPlayer(ClientID);
-				if(!pPlayer)
-					continue;
+			auto* pPlayer = GS()->GetPlayer(ClientID);
+			if(!pPlayer)
+				continue;
 
+			int SoundId = SOUND_GAME_WANTED;
+			if(m_Successful)
+			{
 				for(const auto& Reward : Scenario()->GetContextRewards())
 				{
 					auto* pItem = pPlayer->GetItem(Reward.m_ItemID);
@@ -71,7 +73,10 @@ private:
 						GS()->Chat(ClientID, "Scenario reward: {} x{}.", pItem->Info()->GetName(), Reward.m_Value);
 					}
 				}
+				SoundId = SOUND_GAME_DONE;
 			}
+
+			GS()->CreatePlayerSound(ClientID, SoundId);
 		}
 
 		m_NextStepId = END_SCENARIO_STEP_ID;

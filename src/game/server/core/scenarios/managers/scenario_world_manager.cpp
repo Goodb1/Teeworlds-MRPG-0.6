@@ -87,7 +87,7 @@ void CScenarioWorldManager::AttachVoteForPlayer(int ClientID)
 
 	// register callback options vote
 	const int remainingSeconds = std::max(1, (int)((m_PendingStart.m_StartAt - time_get()) / time_freq()));
-	auto* pOption = CVoteOptional::Create(ClientID, remainingSeconds, "Enter world scenario.");
+	auto* pOption = CVoteOptional::Create(ClientID, remainingSeconds, "Join the scenario.");
 	pOption->RegisterCallback([this](CPlayer* pVotePlayer, bool isJoined)
 	{
 		if(!m_PendingStart.m_Active || !pVotePlayer)
