@@ -525,6 +525,7 @@ enum EMenuList
 	MENU_GUILD,
 	MENU_GUILD_DISBAND,
 	MENU_GUILD_UPGRADES,
+	MENU_GUILD_PROGRESSION_TREE,
 	MENU_GUILD_MEMBER_LIST,
 	MENU_GUILD_MEMBER_SELECT,
 	MENU_GUILD_RANK_LIST,
@@ -637,7 +638,7 @@ enum
 	MAX_DECORATIONS_PER_HOUSE      = 20,    // maximum decorations for houses
 	MAIL_MAX_CAPACITY              = 10,    // maximum number of emails what is displayed
 	MAX_ATTRIBUTES_FOR_ITEM        = 2,	    // maximum number of stats per item
-	POTION_RECAST_DEFAULT_TIME      = 15,    // recast append time for potion in seconds
+	POTION_RECAST_DEFAULT_TIME     = 15,    // recast append time for potion in seconds
 	DEFAULT_MAX_PLAYER_BAG_GOLD    = 5000,  // player gold limit
 	MIN_SKINCHANGE_CLIENTVERSION   = 0x0703,// minimum client version for skin change
 	MIN_RACE_CLIENTVERSION         = 0x0704,// minimum client version for race type

@@ -35,6 +35,7 @@ public:
 private:
 	void ShowMenu(int ClientID) const;
 	void ShowUpgrades(CPlayer* pPlayer) const;
+	void ShowProgressionTree(CPlayer* pPlayer) const;
 	void ShowDisband(CPlayer* pPlayer) const;
 	void ShowHouseSell(CPlayer* pPlayer) const;
 	void ShowRanksList(CPlayer* pPlayer) const;
