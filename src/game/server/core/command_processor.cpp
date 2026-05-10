@@ -55,6 +55,7 @@ CCommandProcessor::CCommandProcessor(CGS* pGS)
 	// donor commands
 	AddCommand("donor", "", ConChatDonorCmdList, pServer, "Donor command list");
 	AddCommand("donor_pro", "", ConChatDonorProCmdList, pServer, "Donor pro command list");
+	AddCommand("dpro_blink", "", ConChatDonorProTeleport, pServer, "Donor Pro teleport to view point");
 
 	// other
 	AddCommand("timeout", "?s[code]", ConChatTimeoutGuest, pServer, "Timeout auth code");
@@ -513,7 +514,8 @@ void CCommandProcessor::ConChatDonorCmdList(IConsole::IResult* pResult, void* pU
 	}
 
 	pGS->Chat(ClientID, mystd::aesthetic::wrapLinePillar(10).c_str());
-	pGS->Chat(ClientID, "Left time: {}", pDonorItem->GetExpiresRemainingString());
+	if(pDonorItem->GetExpiresAt() > 0)
+		pGS->Chat(ClientID, "Left time: {}", pDonorItem->GetExpiresRemainingString());
 }
 
 void CCommandProcessor::ConChatDonorProCmdList(IConsole::IResult* pResult, void* pUser)
@@ -533,8 +535,44 @@ void CCommandProcessor::ConChatDonorProCmdList(IConsole::IResult* pResult, void*
 	}
 
 	pGS->Chat(ClientID, mystd::aesthetic::wrapLinePillar(10).c_str());
-	pGS->Chat(ClientID, "Left time: {}", pDonorProItem->GetExpiresRemainingString());
+	if(pDonorProItem->GetExpiresAt() > 0)
+		pGS->Chat(ClientID, "Left time: {}", pDonorProItem->GetExpiresRemainingString());
+	pGS->Chat(ClientID, "/dpro_blink - teleport to view point.");
 }
+
+void CCommandProcessor::ConChatDonorProTeleport(IConsole::IResult* pResult, void* pUser)
+{
+	const int ClientID = pResult->GetClientID();
+	auto* pGS = GetCommandResultGameServer(ClientID, pUser);
+	auto* pPlayer = pGS->GetPlayer(ClientID);
+	if(!is_valid_player(pGS, pPlayer, true))
+		return;
+
+	// check privileges valid
+	if(!pPlayer->GetItem(itDonorPro)->HasItem())
+	{
+		pGS->Chat(ClientID, "Donor Pro only command. Upgrade to unlock instant.");
+		return;
+	}
+
+	// allow teleport only inside normal world
+	if(!pGS->IsWorldType(WorldType::Default))
+	{
+		pGS->Chat(ClientID, "Teleport is allowed only in the normal world.");
+		return;
+	}
+
+	// teleport
+	auto* pChar = pPlayer->GetCharacter();
+	if(pChar)
+	{
+		const vec2 MousePos = pChar->GetMousePos();
+		pChar->ChangePosition(MousePos);
+		pGS->CreateDeath(MousePos, ClientID);
+		pGS->CreatePlayerSpawn(MousePos);
+	}
+}
+
 
 void CCommandProcessor::ConChatTimeoutGuest(IConsole::IResult* pResult, void* pUser)
 {

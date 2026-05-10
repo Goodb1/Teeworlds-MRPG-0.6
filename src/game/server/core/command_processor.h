@@ -26,6 +26,7 @@ class CCommandProcessor
 	static void ConChatAssistant(IConsole::IResult* pResult, void* pUserData);
 	static void ConChatDonorCmdList(IConsole::IResult* pResult, void* pUserData);
 	static void ConChatDonorProCmdList(IConsole::IResult* pResult, void* pUserData);
+	static void ConChatDonorProTeleport(IConsole::IResult* pResult, void* pUserData);
 	static void ConChatTimeoutGuest(IConsole::IResult* pResult, void* pUserData);
 
 	static void ConChatPlaceholder(IConsole::IResult* pResult, void* pUserData);
