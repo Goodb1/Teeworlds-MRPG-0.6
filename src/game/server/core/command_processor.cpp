@@ -53,8 +53,8 @@ CCommandProcessor::CCommandProcessor(CGS* pGS)
 	AddCommand("assistant", "", ConChatAssistant, pServer, "Personal assistant dashboard");
 
 	// donor commands
-	AddCommand("donor", "", ConChatDonorCmdlist, pServer, "Donor command list");
-	AddCommand("donor_pro", "", ConChatDonorProCmdlist, pServer, "Donor pro command list");
+	AddCommand("donor", "", ConChatDonorCmdList, pServer, "Donor command list");
+	AddCommand("donor_pro", "", ConChatDonorProCmdList, pServer, "Donor pro command list");
 
 	// other
 	AddCommand("timeout", "?s[code]", ConChatTimeoutGuest, pServer, "Timeout auth code");
