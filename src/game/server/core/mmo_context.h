@@ -731,6 +731,10 @@ enum
 
 	// special events
 	itTittleNewbie                 = 30,    // After tutorial game stage
+
+	// donor features
+	itDonor                        = 413,   // Donor features
+	itDonorPro                     = 414,   // Donor Pro features
 };
 
 // broadcast

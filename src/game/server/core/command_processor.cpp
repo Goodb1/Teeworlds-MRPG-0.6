@@ -52,6 +52,10 @@ CCommandProcessor::CCommandProcessor(CGS* pGS)
 	AddCommand("info", "", ConChatInfo, pServer, "Game information/wiki");
 	AddCommand("assistant", "", ConChatAssistant, pServer, "Personal assistant dashboard");
 
+	// donor commands
+	AddCommand("donor", "", ConChatDonorCmdlist, pServer, "Donor command list");
+	AddCommand("donor_pro", "", ConChatDonorProCmdlist, pServer, "Donor pro command list");
+
 	// other
 	AddCommand("timeout", "?s[code]", ConChatTimeoutGuest, pServer, "Timeout auth code");
 
@@ -490,6 +494,46 @@ void CCommandProcessor::ConChatAssistant(IConsole::IResult* pResult, void* pUser
 		return;
 
 	pGS->SendMenuMotd(pPlayer, MOTD_MENU_PERSONAL_ASSISTANT);
+}
+
+void CCommandProcessor::ConChatDonorCmdList(IConsole::IResult* pResult, void* pUser)
+{
+	const int ClientID = pResult->GetClientID();
+	auto* pGS = GetCommandResultGameServer(ClientID, pUser);
+	auto* pPlayer = pGS->GetPlayer(ClientID);
+	if(!is_valid_player(pGS, pPlayer, false))
+		return;
+
+	// check privileges valid
+	const auto* pDonorItem = pPlayer->GetItem(itDonor);
+	if(!pDonorItem->HasItem())
+	{
+		pGS->Chat(ClientID, "You do not have '{}' privileges.", pDonorItem->Info()->GetName());
+		return;
+	}
+
+	pGS->Chat(ClientID, mystd::aesthetic::wrapLinePillar(10).c_str());
+	pGS->Chat(ClientID, "Left time: {}", pDonorItem->GetExpiresRemainingString());
+}
+
+void CCommandProcessor::ConChatDonorProCmdList(IConsole::IResult* pResult, void* pUser)
+{
+	const int ClientID = pResult->GetClientID();
+	auto* pGS = GetCommandResultGameServer(ClientID, pUser);
+	auto* pPlayer = pGS->GetPlayer(ClientID);
+	if(!is_valid_player(pGS, pPlayer, false))
+		return;
+
+	// check privileges valid
+	const auto* pDonorProItem = pPlayer->GetItem(itDonorPro);
+	if(!pDonorProItem->HasItem())
+	{
+		pGS->Chat(ClientID, "You do not have '{}' privileges.", pDonorProItem->Info()->GetName());
+		return;
+	}
+
+	pGS->Chat(ClientID, mystd::aesthetic::wrapLinePillar(10).c_str());
+	pGS->Chat(ClientID, "Left time: {}", pDonorProItem->GetExpiresRemainingString());
 }
 
 void CCommandProcessor::ConChatTimeoutGuest(IConsole::IResult* pResult, void* pUser)
