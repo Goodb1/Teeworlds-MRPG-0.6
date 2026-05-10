@@ -141,6 +141,8 @@ inline void to_json(nlohmann::json& j, const CItem& data)
 		j["enchant"] = data.GetEnchant();
 	if(data.GetDurability() != 0)
 		j["durability"] = data.GetDurability();
+	if(data.GetExpiresAt() != 0)
+		j["lifetime"] = maximum<time_t>(0, data.GetExpiresAt() - time(nullptr));
 }
 
 inline void from_json(const nlohmann::json& j, CItem& data)
@@ -156,6 +158,7 @@ inline void from_json(const nlohmann::json& j, CItem& data)
 	// optional fields
 	data.SetEnchant(j.value("enchant", 0));
 	data.SetDurability(j.value("durability", 100));
+	data.SetExpiresAt(time(nullptr) + (j.value<time_t>("lifetime", 0)));
 }
 
 // JSON ADL for CItemsContainer=
