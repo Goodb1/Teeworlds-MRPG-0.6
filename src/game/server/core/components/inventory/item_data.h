@@ -158,7 +158,8 @@ inline void from_json(const nlohmann::json& j, CItem& data)
 	// optional fields
 	data.SetEnchant(j.value("enchant", 0));
 	data.SetDurability(j.value("durability", 100));
-	data.SetExpiresAt(time(nullptr) + (j.value<time_t>("lifetime", 0)));
+	const auto Lifetime = j.value<time_t>("lifetime", 0);
+	data.SetExpiresAt(Lifetime > 0 ? (time(nullptr) + Lifetime) : 0);
 }
 
 // JSON ADL for CItemsContainer=
