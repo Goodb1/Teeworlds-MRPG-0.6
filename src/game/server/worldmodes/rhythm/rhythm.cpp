@@ -39,10 +39,10 @@ CGameControllerRhythm::CGameControllerRhythm(CGS* pGameServer)
 	m_FieldAnchorValid = false;
 	mem_zero(m_aLanePressTick, sizeof(m_aLanePressTick));
 	mem_zero(m_aLaneHoldTick, sizeof(m_aLaneHoldTick));
+	mem_zero(m_aLanePrevHitTick, sizeof(m_aLanePrevHitTick));
 	mem_zero(m_aLaneLastHitTick, sizeof(m_aLaneLastHitTick));
 	mem_zero(m_aLanePressId, sizeof(m_aLanePressId));
 	mem_zero(m_aLanePressUsedId, sizeof(m_aLanePressUsedId));
-	mem_zero(m_aNoteLaneHitMask, sizeof(m_aNoteLaneHitMask));
 	for(auto &Score : m_aScores)
 		Score = {};
 }
@@ -224,10 +224,32 @@ int CGameControllerRhythm::NoteTimeToTick(double NoteTime) const
 
 void CGameControllerRhythm::RebuildTickTimings()
 {
-	m_vNoteTicks.clear();
-	m_vNoteTicks.reserve(m_vNotes.size());
+	if(m_vNotes.empty())
+	{
+		m_vNoteTicks.clear();
+		return;
+	}
+
+	std::vector<CNote> vMergedNotes;
+	std::vector<int> vMergedTicks;
+	vMergedNotes.reserve(m_vNotes.size());
+	vMergedTicks.reserve(m_vNotes.size());
+
 	for(const auto &Note : m_vNotes)
-		m_vNoteTicks.push_back(NoteTimeToTick(Note.m_Time));
+	{
+		const int Tick = NoteTimeToTick(Note.m_Time);
+		if(!vMergedTicks.empty() && vMergedTicks.back() == Tick)
+		{
+			vMergedNotes.back().m_StepBits |= Note.m_StepBits;
+			continue;
+		}
+
+		vMergedNotes.push_back(Note);
+		vMergedTicks.push_back(Tick);
+	}
+
+	m_vNotes = std::move(vMergedNotes);
+	m_vNoteTicks = std::move(vMergedTicks);
 }
 
 void CGameControllerRhythm::ChangeState(EStageState State)
@@ -406,11 +428,11 @@ void CGameControllerRhythm::ResetClientState(int ClientID)
 	{
 		m_aLanePressTick[ClientID][LaneIndex] = SRhythmFieldConfig::s_InvalidPressTick;
 		m_aLaneHoldTick[ClientID][LaneIndex] = SRhythmFieldConfig::s_InvalidPressTick;
+		m_aLanePrevHitTick[ClientID][LaneIndex] = SRhythmFieldConfig::s_InvalidPressTick;
 		m_aLaneLastHitTick[ClientID][LaneIndex] = SRhythmFieldConfig::s_InvalidPressTick;
 	}
 	mem_zero(m_aLanePressId[ClientID], sizeof(m_aLanePressId[ClientID]));
 	mem_zero(m_aLanePressUsedId[ClientID], sizeof(m_aLanePressUsedId[ClientID]));
-	m_aNoteLaneHitMask[ClientID] = 0;
 	m_aScores[ClientID] = {};
 }
 
@@ -419,29 +441,44 @@ void CGameControllerRhythm::ScoreHit(int ClientID, int RatingDelta)
 	if(!IsValidClientID(ClientID))
 		return;
 
+	int BasePoints = 0;
 	const char* pText = "MISS";
+	SRhythmScore &Score = m_aScores[ClientID];
 	if(RatingDelta <= SRhythmFieldConfig::s_PerfectWindowTicks)
 	{
 		pText = "PERFECT";
-		m_aScores[ClientID].m_Perfect++;
-		m_aScores[ClientID].m_LastGrade = ERhythmHitGrade::PERFECT;
+		Score.m_Perfect++;
+		Score.m_LastGrade = ERhythmHitGrade::PERFECT;
+		BasePoints = 3;
 	}
 	else if(RatingDelta <= SRhythmFieldConfig::s_GoodWindowTicks)
 	{
 		pText = "GOOD";
-		m_aScores[ClientID].m_Good++;
-		m_aScores[ClientID].m_LastGrade = ERhythmHitGrade::GOOD;
+		Score.m_Good++;
+		Score.m_LastGrade = ERhythmHitGrade::GOOD;
+		BasePoints = 2;
 	}
 	else if(RatingDelta <= SRhythmFieldConfig::s_BadWindowTicks)
 	{
 		pText = "BAD";
-		m_aScores[ClientID].m_Bad++;
-		m_aScores[ClientID].m_LastGrade = ERhythmHitGrade::BAD;
+		Score.m_Bad++;
+		Score.m_LastGrade = ERhythmHitGrade::BAD;
+		BasePoints = 1;
 	}
 	else
 	{
-		m_aScores[ClientID].m_Miss++;
-		m_aScores[ClientID].m_LastGrade = ERhythmHitGrade::MISS;
+		Score.m_Miss++;
+		Score.m_LastGrade = ERhythmHitGrade::MISS;
+		Score.m_Combo = 0;
+	}
+
+	if(BasePoints > 0)
+	{
+		Score.m_Combo++;
+		Score.m_MaxCombo = maximum(Score.m_MaxCombo, Score.m_Combo);
+		const int ComboBonusPercent = minimum(100, (Score.m_Combo - 1) * 4);
+		const int AddedPoints = BasePoints + BasePoints * ComboBonusPercent / 100;
+		Score.m_Points += AddedPoints;
 	}
 
 	const auto TextPos = vec2(m_FieldAnchorPos.x, m_FieldAnchorPos.y + 48.f);
@@ -450,7 +487,7 @@ void CGameControllerRhythm::ScoreHit(int ClientID, int RatingDelta)
 
 int CGameControllerRhythm::ScorePoints(const SRhythmScore& Score) const
 {
-	return Score.m_Perfect * 3 + Score.m_Good * 2 + Score.m_Bad;
+	return Score.m_Points;
 }
 
 bool CGameControllerRhythm::IsActivePlayer(int ClientID) const
@@ -461,7 +498,7 @@ bool CGameControllerRhythm::IsActivePlayer(int ClientID) const
 
 std::string CGameControllerRhythm::BuildTopScoresBroadcastText(int MaxRows) const
 {
-	std::vector<std::pair<std::string, int>> vTop;
+	std::vector<std::pair<std::string, std::string>> vTop;
 	vTop.reserve(MAX_PLAYERS);
 	for(int ClientID = 0; ClientID < MAX_PLAYERS; ++ClientID)
 	{
@@ -471,7 +508,9 @@ std::string CGameControllerRhythm::BuildTopScoresBroadcastText(int MaxRows) cons
 		const auto* pName = Server()->ClientName(ClientID);
 		if(!pName || !pName[0])
 			continue;
-		vTop.emplace_back(pName, ScorePoints(m_aScores[ClientID]));
+
+		const auto result = fmt_default("{} (x{})", ScorePoints(m_aScores[ClientID]), m_aScores[ClientID].m_Combo);
+		vTop.emplace_back(pName, result);
 	}
 
 	std::stable_sort(vTop.begin(), vTop.end(), [](const auto& Left, const auto& Right)
@@ -493,7 +532,7 @@ std::string CGameControllerRhythm::BuildTopScoresBroadcastText(int MaxRows) cons
 			Result.push_back('\n');
 
 		char aLine[96];
-		str_format(aLine, sizeof(aLine), "%d. %s %d", i + 1, vTop[i].first.c_str(), vTop[i].second);
+		str_format(aLine, sizeof(aLine), "%d. %s %s", i + 1, vTop[i].first.c_str(), vTop[i].second.c_str());
 		Result += aLine;
 	}
 	return Result;
@@ -590,10 +629,7 @@ void CGameControllerRhythm::ProcessPlayerInput(int ClientID, const CNetObj_Playe
 			if(!aLaneBits[LaneIndex])
 				continue;
 
-			const uint8_t LaneMask = 1u << LaneIndex;
-			if(m_aNoteLaneHitMask[ClientID] & LaneMask)
-				continue;
-			if(m_aLaneLastHitTick[ClientID][LaneIndex] == NoteTick)
+			if(m_aLaneLastHitTick[ClientID][LaneIndex] == NoteTick || m_aLanePrevHitTick[ClientID][LaneIndex] == NoteTick)
 				continue;
 			if(m_pRhythmField->IsHiddenArrowForClient(LaneIndex, NoteTick, ClientID))
 				continue;
@@ -616,7 +652,7 @@ void CGameControllerRhythm::ProcessPlayerInput(int ClientID, const CNetObj_Playe
 			GS()->CreateHammerHit(EffectPos, CmaskOne(ClientID));
 			ScoreHit(ClientID, RawDelta);
 			m_pRhythmField->HideArrowForClient(LaneIndex, NoteTick, ClientID);
-			m_aNoteLaneHitMask[ClientID] |= LaneMask;
+			m_aLanePrevHitTick[ClientID][LaneIndex] = m_aLaneLastHitTick[ClientID][LaneIndex];
 			m_aLaneLastHitTick[ClientID][LaneIndex] = NoteTick;
 			m_aLanePressUsedId[ClientID][LaneIndex] = m_aLanePressId[ClientID][LaneIndex];
 		}
@@ -665,11 +701,11 @@ void CGameControllerRhythm::UpdateNotes()
 				{
 					if(!aLaneBits[LaneIndex])
 						continue;
-					const uint8_t LaneMask = 1u << LaneIndex;
-					if(m_aNoteLaneHitMask[i] & LaneMask)
+					if(m_aLaneLastHitTick[i][LaneIndex] == NoteTick || m_aLanePrevHitTick[i][LaneIndex] == NoteTick)
 						continue;
 					m_aScores[i].m_Miss++;
 					m_aScores[i].m_LastGrade = ERhythmHitGrade::MISS;
+					m_aScores[i].m_Combo = 0;
 				}
 			}
 		}
@@ -678,8 +714,6 @@ void CGameControllerRhythm::UpdateNotes()
 			break;
 
 		++m_CurrentNote;
-		for(int i = 0; i < MAX_PLAYERS; ++i)
-			m_aNoteLaneHitMask[i] = 0;
 	}
 }
 

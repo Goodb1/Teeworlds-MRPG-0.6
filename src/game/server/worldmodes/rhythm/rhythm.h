@@ -57,6 +57,9 @@ private:
 		int m_Good{};
 		int m_Bad{};
 		int m_Miss{};
+		int m_Combo{};
+		int m_MaxCombo{};
+		int m_Points{};
 		ERhythmHitGrade m_LastGrade{ERhythmHitGrade::NONE};
 	};
 
@@ -105,10 +108,10 @@ private:
 	std::array<CNetObj_PlayerInput, MAX_PLAYERS> m_aPrevInputs{};
 	int m_aLanePressTick[MAX_PLAYERS][ms_LaneCount]{};
 	int m_aLaneHoldTick[MAX_PLAYERS][ms_LaneCount]{};
+	int m_aLanePrevHitTick[MAX_PLAYERS][ms_LaneCount] {};
 	int m_aLaneLastHitTick[MAX_PLAYERS][ms_LaneCount]{};
 	uint16_t m_aLanePressId[MAX_PLAYERS][ms_LaneCount]{};
 	uint16_t m_aLanePressUsedId[MAX_PLAYERS][ms_LaneCount]{};
-	uint8_t m_aNoteLaneHitMask[MAX_PLAYERS]{};
 	SRhythmScore m_aScores[MAX_PLAYERS]{};
 
 	vec2 m_FieldAnchorPos;
