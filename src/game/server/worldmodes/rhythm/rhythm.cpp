@@ -752,7 +752,7 @@ void CGameControllerRhythm::SaveRhythmResults()
 	for(int ClientID = 0; ClientID < MAX_PLAYERS; ++ClientID)
 	{
 		auto* pPlayer = GS()->GetPlayer(ClientID);
-		if(!IsActivePlayer(ClientID) || !pPlayer->IsAuthed())
+		if(!pPlayer || !IsActivePlayer(ClientID) || !pPlayer->IsAuthed())
 			continue;
 
 		const auto& Score = m_aScores[ClientID];
