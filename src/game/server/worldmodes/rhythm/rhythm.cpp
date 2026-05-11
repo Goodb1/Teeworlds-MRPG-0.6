@@ -701,11 +701,23 @@ void CGameControllerRhythm::SaveRhythmResults()
 		pPlayer->GetItem(itMaterial)->Add(MaterialReward, 0, 0, 0, false);
 		GS()->Chat(ClientID, "You received {} materials for completing Rhythm!", MaterialReward);
 
-		// update
+		// save a single best record per player in current rhythm world
 		const int AccountID = pPlayer->Account()->GetID();
 		const int WorldID = GS()->GetWorldID();
-		Database->Execute<DB::INSERT>("tw_rhythm_records", "(UserID, WorldID, Score) VALUES ('{}', '{}', '{}') "
-			"ON DUPLICATE KEY UPDATE Score = GREATEST(Score, VALUES(Score))", AccountID, WorldID, Points);
+		ResultPtr pRes = Database->Execute<DB::SELECT>("ID, Score", "tw_rhythm_records",
+			"WHERE UserID = '{}' AND WorldID = '{}' ORDER BY Score DESC LIMIT 1", AccountID, WorldID);
+		if(!pRes->next())
+		{
+			Database->Execute<DB::INSERT>("tw_rhythm_records", "(UserID, WorldID, Score) VALUES ('{}', '{}', '{}')",
+				AccountID, WorldID, Points);
+		}
+		else
+		{
+			const int RecordID = pRes->getInt("ID");
+			const int BestScore = pRes->getInt("Score");
+			if(Points > BestScore)
+				Database->Execute<DB::UPDATE>("tw_rhythm_records", "Score = '{}' WHERE ID = '{}'", Points, RecordID);
+		}
 		GS()->Chat(-1, "'{}' finished '{}' with {} points!", Server()->ClientName(ClientID), Server()->GetWorldName(WorldID), Points);
 	}
 }

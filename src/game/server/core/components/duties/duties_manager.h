@@ -25,5 +25,9 @@ public:
 	CDungeonData* GetDungeonByID(int DungeonID) const;
 	CDungeonData* GetDungeonByWorldID(int WorldID) const;
 	int GetWorldsCountByType(WorldType Type) const;
+
+private:
+	std::optional<std::pair<std::string, int>> GetBestDungeonPlayer() const;
+	std::optional<std::pair<std::string, int>> GetBestRhythmPlayer() const;
 };
 #endif

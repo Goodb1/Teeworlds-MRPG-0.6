@@ -33,6 +33,10 @@ bool CDutiesManager::OnSendMenuVotes(CPlayer* pPlayer, int Menulist)
 
 		// dungeons
 		VoteWrapper VDungeon(ClientID, VWF_SEPARATE_OPEN | VWF_STYLE_SIMPLE, "\u262C Dungeons ({})", GetWorldsCountByType(WorldType::Dungeon));
+		if(const auto BestPlayer = GetBestDungeonPlayer())
+			VDungeon.Add("Best player: {} with {} points.", BestPlayer->first, BestPlayer->second);
+		else
+			VDungeon.Add("Best player: not found yet.");
 		for(const auto* pDungeon : CDungeonData::Data())
 		{
 			const char* pStatus = (pDungeon->IsPlaying() ? "Active" : "Waiting");
@@ -60,6 +64,10 @@ bool CDutiesManager::OnSendMenuVotes(CPlayer* pPlayer, int Menulist)
 
 		// Rhythm
 		VoteWrapper VRhythm(ClientID, VWF_SEPARATE_OPEN | VWF_STYLE_SIMPLE, "\u266C Rhythm ({})", GetWorldsCountByType(WorldType::Rhythm));
+		if(const auto BestPlayer = GetBestRhythmPlayer())
+			VRhythm.Add("Best player: {} with {} points.", BestPlayer->first, BestPlayer->second);
+		else
+			VRhythm.Add("Best player: not found yet.");
 		for(int i = 0; i < Server()->GetWorldsSize(); i++)
 		{
 			const auto* pDetail = Server()->GetWorldDetail(i);
@@ -365,6 +373,31 @@ void CDutiesManager::ShowRhythmInfo(CPlayer* pPlayer, int WorldID) const
 	}
 }
 
+
+
+std::optional<std::pair<std::string, int>> CDutiesManager::GetBestDungeonPlayer() const
+{
+	ResultPtr pRes = Database->Execute<DB::SELECT>(
+		"UserID, SUM(CASE WHEN Time > 0 THEN GREATEST(1, 10000 / Time) ELSE 10000 END) AS Points",
+		"tw_dungeons_records", "GROUP BY UserID ORDER BY Points DESC LIMIT 1");
+	if(!pRes->next())
+		return std::nullopt;
+
+	const int UserID = pRes->getInt("UserID");
+	const int Points = pRes->getInt("Points");
+	return std::make_pair(std::string(GS()->Server()->GetAccountNickname(UserID)), Points);
+}
+
+std::optional<std::pair<std::string, int>> CDutiesManager::GetBestRhythmPlayer() const
+{
+	ResultPtr pRes = Database->Execute<DB::SELECT>("UserID, SUM(Score) AS Points", "tw_rhythm_records", "GROUP BY UserID ORDER BY Points DESC LIMIT 1");
+	if(!pRes->next())
+		return std::nullopt;
+
+	const int UserID = pRes->getInt("UserID");
+	const int Points = pRes->getInt("Points");
+	return std::make_pair(std::string(GS()->Server()->GetAccountNickname(UserID)), Points);
+}
 
 CDungeonData* CDutiesManager::GetDungeonByID(int DungeonID) const
 {
