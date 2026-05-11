@@ -1017,42 +1017,32 @@ const CTeeInfo& CPlayer::GetTeeInfo() const
 	return Account()->GetTeeInfo();
 }
 
-void CPlayer::StartUniversalScenario(const std::string& ScenarioData, int ScenarioID)
+void CPlayer::StartUniversalScenario(const std::string& ScenarioData, ScenarioBlock Block) const
 {
-	StartScenarioByType(ScenarioData, ScenarioID, "universal");
+	nlohmann::json JsonData;
+	mystd::json::parse(ScenarioData, [&Block, &JsonData](const nlohmann::json& Json)
+	{
+		if(Block.empty())
+			JsonData = Json;
+		else if(const auto It = Json.find(Block); It != Json.end() && !It->is_null())
+			JsonData = *It;
+	});
+
+	if(!JsonData.is_null() && !JsonData.empty())
+		GS()->ScenarioPlayerManager()->RegisterScenario<CUniversalScenario>(m_ClientID, JsonData);
 }
 
-void CPlayer::StartScenarioByType(const std::string& ScenarioData, int ScenarioID, const std::string& ScenarioType)
+void CPlayer::StartWorldScenario(const std::string& ScenarioData, ScenarioBlock Block, int WorldID, int Single, int DurationSeconds) const
 {
-	if(ScenarioData.empty())
-		return;
-
-	// parse scenario
-	mystd::json::parse(ScenarioData, [ScenarioType, ScenarioID, this](nlohmann::json& pJson)
+	nlohmann::json JsonData;
+	mystd::json::parse(ScenarioData, [&](const nlohmann::json& Json)
 	{
-		std::string ObjElem {};
-		switch(ScenarioID)
-		{
-			case SCENARIO_ON_DIALOG_RECIEVE_OBJECTIVES: ObjElem = "on_recieve_objectives"; break;
-			case SCENARIO_ON_DIALOG_COMPLETE_OBJECTIVES: ObjElem = "on_complete_objectives"; break;
-			case SCENARIO_ON_END_STEP: ObjElem = "on_end"; break;
-			case SCENARIO_ON_ITEM_EQUIP: ObjElem = "on_equip"; break;
-			case SCENARIO_ON_ITEM_GOT: ObjElem = "on_got"; break;
-			case SCENARIO_ON_ITEM_LOST: ObjElem = "on_lost"; break;
-			case SCENARIO_ON_ITEM_UNEQUIP: ObjElem = "on_unequip"; break;
-			case SCENARIO_ON_ITEM_USE: ObjElem = "on_use"; break;
-		}
-
-		// start scenario
-		const auto& scenarioJsonData = ObjElem.empty() ? pJson : pJson[ObjElem];
-		if(!scenarioJsonData.empty())
-		{
-			const std::string ScenarioMode = (ScenarioType == "world" ? "world" : "universal");
-
-			if(ScenarioMode == "world")
-				GS()->ScenarioWorldManager()->RegisterScenario<CWorldScenario>(GetCurrentWorldID(), scenarioJsonData);
-			else
-				GS()->ScenarioPlayerManager()->RegisterScenario<CUniversalScenario>(m_ClientID, scenarioJsonData);
-		}
+		if(Block.empty())
+			JsonData = Json;
+		else if(const auto It = Json.find(Block); It != Json.end() && !It->is_null())
+			JsonData = *It;
 	});
+
+	if(!JsonData.is_null() && !JsonData.empty())
+		GS()->ScenarioWorldManager()->RegisterScenario<CWorldScenario>(WorldID, m_ClientID, Single, DurationSeconds, JsonData);
 }

@@ -53,30 +53,31 @@ public:
 	DECLARE_COMPONENT_NAME("world_complete")
 
 private:
+	void GiveRewards(CPlayer* pPlayer)
+	{
+		for(const auto& Reward : Scenario()->GetContextRewards())
+		{
+			auto* pItem = pPlayer->GetItem(Reward.m_ItemID);
+			if(!pItem || random_float(100.0f) > Reward.m_Chance)
+				continue;
+
+			pItem->Add(Reward.m_Value, 0, 0, 0, false);
+			GS()->Chat(pPlayer->GetCID(), "Scenario reward: {} x{}.", pItem->Info()->GetName(), Reward.m_Value);
+		}
+	}
+
 	void OnStartImpl() override
 	{
+		const int SoundId = m_Successful ? SOUND_GAME_DONE : SOUND_GAME_WANTED;
 		for(const int ClientID : Scenario()->GetParticipants())
 		{
 			auto* pPlayer = GS()->GetPlayer(ClientID);
-			if(!pPlayer)
-				continue;
-
-			int SoundId = SOUND_GAME_WANTED;
-			if(m_Successful)
+			if(pPlayer)
 			{
-				for(const auto& Reward : Scenario()->GetContextRewards())
-				{
-					auto* pItem = pPlayer->GetItem(Reward.m_ItemID);
-					if(pItem && random_float(100.0f) < Reward.m_Chance)
-					{
-						pItem->Add(Reward.m_Value, 0, 0, false);
-						GS()->Chat(ClientID, "Scenario reward: {} x{}.", pItem->Info()->GetName(), Reward.m_Value);
-					}
-				}
-				SoundId = SOUND_GAME_DONE;
+				GS()->CreatePlayerSound(ClientID, SoundId);
+				if(m_Successful)
+					GiveRewards(pPlayer);
 			}
-
-			GS()->CreatePlayerSound(ClientID, SoundId);
 		}
 
 		m_NextStepId = END_SCENARIO_STEP_ID;

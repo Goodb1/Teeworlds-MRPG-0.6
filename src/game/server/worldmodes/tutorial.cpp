@@ -38,7 +38,7 @@ bool CGameControllerTutorial::OnCharacterSpawn(CCharacter* pChr)
 {
 	// start tutorial scenario
 	if(pChr->GetPlayer()->IsAuthed())
-		pChr->GetPlayer()->StartUniversalScenario(m_JsonTutorialData.dump(), EScenarios::SCENARIO_TUTORIAL);
+		pChr->GetPlayer()->StartUniversalScenario(m_JsonTutorialData.dump(), {});
 	return CGameControllerDefault::OnCharacterSpawn(pChr);
 }
 

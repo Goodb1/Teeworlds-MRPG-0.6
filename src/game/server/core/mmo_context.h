@@ -13,6 +13,20 @@ enum class EEntityTextType
 	Laser,
 };
 
+// scenario blocks
+using ScenarioBlock = std::string_view;
+namespace ScenarioBlocks
+{
+	inline constexpr ScenarioBlock DialogReceiveObjectives = "on_recieve_objectives";
+	inline constexpr ScenarioBlock DialogCompleteObjectives = "on_complete_objectives";
+	inline constexpr ScenarioBlock EndStep = "on_end";
+	inline constexpr ScenarioBlock ItemEquip = "on_equip";
+	inline constexpr ScenarioBlock ItemGot = "on_got";
+	inline constexpr ScenarioBlock ItemLost = "on_lost";
+	inline constexpr ScenarioBlock ItemUnequip = "on_unequip";
+	inline constexpr ScenarioBlock ItemUse = "on_use";
+}
+
 // gathering node
 struct GatheringNode
 {
