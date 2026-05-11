@@ -634,12 +634,12 @@ std::map<int, CMmoController::TempTopData> CMmoController::GetDungeonTopList(int
 	return vResult;
 }
 
-std::map<int, CMmoController::TempTopData> CMmoController::GetRhythmTopList(int WorldID, int Rows) const
+std::map<int, CMmoController::TempTopData> CMmoController::GetRhythmTopList(int WorldID, const std::string& Difficulty, int Rows) const
 {
 	std::map<int, TempTopData> vResult {};
 
 	ResultPtr pRes = Database->Execute<DB::SELECT>("*", "tw_rhythm_records",
-		"WHERE WorldID = '{}' ORDER BY Score DESC LIMIT {}", WorldID, Rows);
+		"WHERE WorldID = '{}' AND Difficulty = '{}' ORDER BY Score DESC LIMIT {}", WorldID, Difficulty.c_str(), Rows);
 	while(pRes->next())
 	{
 		const auto Rank = pRes->getRow();

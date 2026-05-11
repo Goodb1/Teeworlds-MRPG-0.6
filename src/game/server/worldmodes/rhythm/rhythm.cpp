@@ -17,6 +17,31 @@
 #include "entities/rhythm_field.h"
 #include <generated/server_data.h>
 
+std::unordered_map<int, std::string> CGameControllerRhythm::ms_WorldDifficultySelection{};
+
+void CGameControllerRhythm::SetSelectedDifficultyForWorld(int WorldID, std::string Difficulty)
+{
+	ms_WorldDifficultySelection[WorldID] = std::move(Difficulty);
+}
+
+std::string CGameControllerRhythm::GetSelectedDifficultyForWorld(int WorldID)
+{
+	const auto Iter = ms_WorldDifficultySelection.find(WorldID);
+	return Iter != ms_WorldDifficultySelection.end() ? Iter->second : "Normal";
+}
+
+void CGameControllerRhythm::ApplyDifficulty(const std::string& Difficulty)
+{
+	if(Difficulty.empty())
+		return;
+
+	m_Difficulty = Difficulty;
+	LoadDanceMapData(Server()->GetWorldName(GS()->GetWorldID()), m_Difficulty);
+	RebuildTickTimings();
+	m_CurrentNote = 0;
+	m_NextSpawnNote = 0;
+}
+
 namespace
 {
 	enum class SoundRhythm : int
@@ -61,7 +86,8 @@ void CGameControllerRhythm::OnInit()
 	m_State = EStageState::STATE_WAIT;
 
 	// initialize
-	LoadDanceMapData(Server()->GetWorldName(GS()->GetWorldID()));
+	m_Difficulty = GetSelectedDifficultyForWorld(GS()->GetWorldID());
+	LoadDanceMapData(Server()->GetWorldName(GS()->GetWorldID()), m_Difficulty);
 	RebuildTickTimings();
 	for(int ClientID = 0; ClientID < MAX_PLAYERS; ++ClientID)
 		ResetClientState(ClientID);
@@ -352,15 +378,19 @@ bool CGameControllerRhythm::OnCharacterSpawn(CCharacter* pChr)
 	return true;
 }
 
-bool CGameControllerRhythm::LoadDanceMapData(const char* pMapName)
+bool CGameControllerRhythm::LoadDanceMapData(const char* pMapName, const std::string& Difficulty)
 {
 	char aFilename[IO_MAX_PATH_LENGTH];
-	str_format(aFilename, sizeof(aFilename), "maps/rhythm/%s.json", pMapName);
+	str_format(aFilename, sizeof(aFilename), "maps/rhythm/%s[%s].json", pMapName, Difficulty.c_str());
 
 	void* pFileData = nullptr;
 	unsigned FileSize = 0;
 	if(!GS()->Storage()->ReadFile(aFilename, IStorageEngine::TYPE_ALL, &pFileData, &FileSize))
-		return false;
+	{
+		str_format(aFilename, sizeof(aFilename), "maps/rhythm/%s.json", pMapName);
+		if(!GS()->Storage()->ReadFile(aFilename, IStorageEngine::TYPE_ALL, &pFileData, &FileSize))
+			return false;
+	}
 
 	nlohmann::json JsonData;
 	const std::string RawJson((const char*)pFileData, FileSize);
@@ -739,11 +769,11 @@ void CGameControllerRhythm::SaveRhythmResults()
 		const int AccountID = pPlayer->Account()->GetID();
 		const int WorldID = GS()->GetWorldID();
 		ResultPtr pRes = Database->Execute<DB::SELECT>("ID, Score", "tw_rhythm_records",
-			"WHERE UserID = '{}' AND WorldID = '{}' ORDER BY Score DESC LIMIT 1", AccountID, WorldID);
+			"WHERE UserID = '{}' AND WorldID = '{}' AND Difficulty = '{}' ORDER BY Score DESC LIMIT 1", AccountID, WorldID, m_Difficulty.c_str());
 		if(!pRes->next())
 		{
-			Database->Execute<DB::INSERT>("tw_rhythm_records", "(UserID, WorldID, Score) VALUES ('{}', '{}', '{}')",
-				AccountID, WorldID, Points);
+			Database->Execute<DB::INSERT>("tw_rhythm_records", "(UserID, WorldID, Difficulty, Score) VALUES ('{}', '{}', '{}', '{}')",
+				AccountID, WorldID, m_Difficulty.c_str(), Points);
 		}
 		else
 		{
@@ -752,7 +782,7 @@ void CGameControllerRhythm::SaveRhythmResults()
 			if(Points > BestScore)
 				Database->Execute<DB::UPDATE>("tw_rhythm_records", "Score = '{}' WHERE ID = '{}'", Points, RecordID);
 		}
-		GS()->Chat(-1, "'{}' finished '{}' with {} points!", Server()->ClientName(ClientID), Server()->GetWorldName(WorldID), Points);
+		GS()->Chat(-1, "'{}' finished '{}[{}]' with {} points!", Server()->ClientName(ClientID), Server()->GetWorldName(WorldID), m_Difficulty, Points);
 	}
 }
 

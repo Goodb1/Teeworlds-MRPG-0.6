@@ -1,8 +1,10 @@
 #include "duties_manager.h"
 
+#include <engine/storage.h>
 #include <game/server/gamecontext.h>
 #include <game/server/core/components/accounts/account_manager.h>
 #include <game/server/worldmodes/dungeon/dungeon.h>
+#include <game/server/worldmodes/rhythm/rhythm.h>
 
 void CDutiesManager::OnPreInit()
 {
@@ -203,6 +205,7 @@ bool CDutiesManager::OnPlayerVoteCommand(CPlayer* pPlayer, const char* pCmd, con
 	if(PPSTR(pCmd, "RHYTHM_JOIN") == 0)
 	{
 		auto WorldIdOpt = GetIfExists<int>(Extras, 0);
+		const auto Difficulty = GetIfExists<std::string>(Extras, 1, std::string("Normal"));
 		if(!WorldIdOpt.has_value())
 			return true;
 
@@ -223,6 +226,16 @@ bool CDutiesManager::OnPlayerVoteCommand(CPlayer* pPlayer, const char* pCmd, con
 			return true;
 		}
 
+		// check is locked for now difficulty
+		const int ClientsNum = Server()->GetClientsCountByWorld(WorldIdOpt.value());
+		const std::string LockedDifficulty = CGameControllerRhythm::GetSelectedDifficultyForWorld(WorldIdOpt.value());
+		if(ClientsNum > 0 && Difficulty != LockedDifficulty)
+		{
+			GS()->Chat(ClientID, "This rhythm room is locked to '{}' difficulty now.", LockedDifficulty);
+			pPlayer->m_VotesData.UpdateVotesIf(MENU_DUTIES_LIST);
+			return true;
+		}
+
 		// check valid level
 		if(pPlayer->Account()->GetLevel() < Server()->GetWorldDetail(WorldIdOpt.value())->GetRequiredLevel())
 		{
@@ -232,7 +245,13 @@ bool CDutiesManager::OnPlayerVoteCommand(CPlayer* pPlayer, const char* pCmd, con
 		}
 
 		// join
-		GS()->Chat(-1, "'{}' joined to '{}'!", Server()->ClientName(ClientID), Server()->GetWorldName(WorldIdOpt.value()));
+		CGameControllerRhythm::SetSelectedDifficultyForWorld(WorldIdOpt.value(), Difficulty);
+		if(pWorldGS)
+		{
+			if(auto* pRhythmController = dynamic_cast<CGameControllerRhythm*>(pWorldGS->m_pController))
+				pRhythmController->ApplyDifficulty(Difficulty);
+		}
+		GS()->Chat(-1, "'{}' joined to '{}' [{}]!", Server()->ClientName(ClientID), Server()->GetWorldName(WorldIdOpt.value()), Difficulty);
 		pPlayer->ChangeWorld(WorldIdOpt.value());
 		return true;
 	}
@@ -344,6 +363,9 @@ void CDutiesManager::ShowRhythmInfo(CPlayer* pPlayer, int WorldID) const
 	const auto ClientsNum = Server()->GetClientsCountByWorld(WorldID);
 	const char* pStatus = (ClientsNum > 0 ? "Active" : "Waiting");
 	const char* pName = Server()->GetWorldName(WorldID);
+	const auto vDifficulties = GetRhythmDifficulties(WorldID);
+	const bool IsDifficultyLocked = ClientsNum > 0;
+	const std::string LockedDifficulty = CGameControllerRhythm::GetSelectedDifficultyForWorld(WorldID);
 
 	// info
 	VoteWrapper VInfo(ClientID, VWF_SEPARATE_OPEN | VWF_STYLE_DOUBLE | VWF_ALIGN_TITLE, "\u2692 Detail information");
@@ -353,27 +375,75 @@ void CDutiesManager::ShowRhythmInfo(CPlayer* pPlayer, int WorldID) const
 	VInfo.Add("Goal: hit notes on beat.");
 	VInfo.Add("Controls: Left / Jump / Right.");
 	VInfo.Add("Tip: perfect timing gives max score.");
+	if(IsDifficultyLocked)
+		VInfo.Add("Current difficulty lock: {}", LockedDifficulty);
 	VoteWrapper::AddEmptyline(ClientID);
 
-	// options
-	VoteWrapper VOptions(ClientID);
-	VOptions.AddOption("RHYTHM_JOIN", WorldID, "Join to the Rhythm");
-	VoteWrapper::AddEmptyline(ClientID);
+	// records by difficulty
+	for(const auto& Difficulty : vDifficulties)
+	{
+		// add record list
+		VoteWrapper VOptions(ClientID, VWF_SEPARATE_OPEN | VWF_STYLE_SIMPLE, "Rhythm [{}]", Difficulty);
+		auto vTopRecords = Core()->GetRhythmTopList(WorldID, Difficulty, 3);
+		if(vTopRecords.empty())
+			VOptions.Add("No records yet.");
+		else
+		{
+			for(auto& [Pos, RowData] : vTopRecords)
+				VOptions.Add("{}. {} - {} score.", Pos, RowData.Name, RowData.Data["Score"].to_int());
+		}
 
-	// records
-	VoteWrapper VRecords(ClientID, VWF_SEPARATE_OPEN | VWF_STYLE_SIMPLE, "Best Rhythm players");
-	auto vTopRecords = Core()->GetRhythmTopList(WorldID, 5);
-	if(vTopRecords.empty())
-	{
-		VRecords.Add("No records yet.");
-	}
-	else for(auto& [Pos, RowData] : vTopRecords)
-	{
-		VRecords.Add("{}. {} - {} score.", Pos, RowData.Name, RowData.Data["Score"].to_int());
+		// lock difficulty if another is active
+		if(IsDifficultyLocked && Difficulty != LockedDifficulty)
+			VOptions.Add("Join [{}] (locked now)", Difficulty);
+		else
+			VOptions.AddOption("RHYTHM_JOIN", MakeAnyList(WorldID, Difficulty), "Join [{}]", Difficulty);
+		VoteWrapper::AddEmptyline(ClientID);
 	}
 }
 
+std::vector<std::string> CDutiesManager::GetRhythmDifficulties(int WorldID) const
+{
+	const std::string_view MapName = Server()->GetWorldName(WorldID);
+	struct SScanData
+	{
+		std::string_view m_MapName;
+		std::vector<std::string> m_vDifficulties;
+	};
 
+	auto Callback = [](const char* pName, int IsDir, int, void* pUser) -> int
+	{
+		if(IsDir)
+			return 0;
+
+		auto& Data = *static_cast<SScanData*>(pUser);
+		const std::string_view FileName(pName);
+		const std::string Prefix = std::string(Data.m_MapName) + "[";
+		if(!str_startswith(FileName.data(), Prefix.c_str()) || !str_endswith(FileName.data(), "].json"))
+			return 0;
+
+		const size_t Begin = Prefix.size();
+		const size_t End = FileName.size() - std::string_view("].json").size();
+		if(Begin >= End)
+			return 0;
+
+		Data.m_vDifficulties.emplace_back(FileName.substr(Begin, End - Begin));
+		return 0;
+	};
+
+	SScanData Data;
+	Data.m_MapName = MapName;
+	GS()->Storage()->ListDirectory(IStorageEngine::TYPE_ALL, "maps/rhythm", Callback, &Data);
+
+	auto& vDifficulties = Data.m_vDifficulties;
+	std::sort(vDifficulties.begin(), vDifficulties.end());
+	vDifficulties.erase(std::unique(vDifficulties.begin(), vDifficulties.end()), vDifficulties.end());
+
+	if(vDifficulties.empty())
+		vDifficulties.emplace_back("Default");
+
+	return vDifficulties;
+}
 
 std::optional<std::pair<std::string, int>> CDutiesManager::GetBestDungeonPlayer() const
 {

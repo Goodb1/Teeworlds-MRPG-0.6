@@ -4,6 +4,7 @@
 #define GAME_SERVER_GAMEMODES_RHYTHM_RHYTHM_H
 
 #include <game/server/gamecontroller.h>
+#include <unordered_map>
 
 class CRhythmField;
 
@@ -11,6 +12,9 @@ class CGameControllerRhythm : public IGameController
 {
 public:
 	CGameControllerRhythm(class CGS* pGameServer);
+	static void SetSelectedDifficultyForWorld(int WorldID, std::string Difficulty);
+	static std::string GetSelectedDifficultyForWorld(int WorldID);
+	void ApplyDifficulty(const std::string& Difficulty);
 	void OnInit() override;
 	void Tick() override;
 	void Snap() override;
@@ -72,7 +76,7 @@ private:
 	void OnEntity(int Index, vec2 Pos, int Flags) override;
 	bool OnCharacterSpawn(class CCharacter* pChr) override;
 
-	bool LoadDanceMapData(const char* pMapName);
+	bool LoadDanceMapData(const char* pMapName, const std::string& Difficulty);
 	bool ParseStepBits(const nlohmann::json& Value, uint8_t* pOut) const;
 	void UpdateNotes();
 	void ProcessPlayerInput(int ClientID, const class CNetObj_PlayerInput& Input, int CurrentTick);
@@ -95,6 +99,7 @@ private:
 	std::vector<CNote> m_vNotes{};
 	std::vector<int> m_vNoteTicks{};
 	CRhythmField* m_pRhythmField{};
+	std::string m_Difficulty{};
 	EStageState m_State{EStageState::STATE_WARMUP};
 	int m_WarmupTick{};
 	int m_LastWarmupTick{};
@@ -113,6 +118,7 @@ private:
 	uint16_t m_aLanePressId[MAX_PLAYERS][ms_LaneCount]{};
 	uint16_t m_aLanePressUsedId[MAX_PLAYERS][ms_LaneCount]{};
 	SRhythmScore m_aScores[MAX_PLAYERS]{};
+	static std::unordered_map<int, std::string> ms_WorldDifficultySelection;
 
 	vec2 m_FieldAnchorPos;
 	bool m_FieldAnchorValid;
