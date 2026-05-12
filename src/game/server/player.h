@@ -173,8 +173,8 @@ public:
 
 	bool PendingChangeWorld();
 	void ChangeWorld(int WorldID, std::optional<vec2> newWorldPosition = std::nullopt);
-	void StartUniversalScenario(const std::string& ScenarioData, int ScenarioID);
-	void StartScenarioByType(const std::string& ScenarioData, int ScenarioID, const std::string& ScenarioType);
+	void StartUniversalScenario(const std::string& ScenarioData, ScenarioBlock Block) const;
+	void StartWorldScenario(const std::string& ScenarioData, ScenarioBlock Block, int WorldID, int Single, int DurationSeconds) const;
 };
 
 #endif

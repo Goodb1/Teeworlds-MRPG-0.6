@@ -121,6 +121,8 @@ void CItemDescription::InitData(const DBSet& GroupSet, const DBSet& TypeSet)
 			UseScenarioContext UseData;
 			UseData.Name = pUseDataJson.value("name", "");
 			UseData.WorldID = pUseDataJson.value("world_id", -1);
+			UseData.Single = pUseDataJson.value("single", false);
+			UseData.DurationSeconds = maximum(0, pUseDataJson.value("duration", 0));
 			if(const auto& pRewardsJson = pUseDataJson["rewards"]; pRewardsJson.is_array())
 			{
 				for(const auto& RewardJson : pRewardsJson)

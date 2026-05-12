@@ -410,7 +410,7 @@ bool CPlayerDialog::CheckActionCompletion() const
 		}
 
 		const auto& scenarioData = questBot.m_ScenarioJson;
-		m_pPlayer->StartUniversalScenario(scenarioData, EScenarios::SCENARIO_ON_DIALOG_COMPLETE_OBJECTIVES);
+		m_pPlayer->StartUniversalScenario(scenarioData, ScenarioBlocks::DialogCompleteObjectives);
 		GS()->CreatePlayerSound(m_pPlayer->GetCID(), SOUND_CTF_RETURN);
 		return true;
 	}
@@ -467,7 +467,7 @@ void CPlayerDialog::ShowCurrentDialog() const
 				pStep->UpdateObjectives();
 
 				const auto& scenarioData = questBot.m_ScenarioJson;
-				m_pPlayer->StartUniversalScenario(scenarioData, EScenarios::SCENARIO_ON_DIALOG_RECIEVE_OBJECTIVES);
+				m_pPlayer->StartUniversalScenario(scenarioData, ScenarioBlocks::DialogReceiveObjectives);
 			}
 		}
 	}

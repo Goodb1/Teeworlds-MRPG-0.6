@@ -10,9 +10,26 @@ void CScenarioWorldManager::UpdateScenarios()
 	// update scenario
 	if(m_pScenario && !m_PendingStart.m_Active)
 	{
+		// time limit
+		if(m_ScenarioDeadlineTick > 0 && time_get() >= m_ScenarioDeadlineTick)
+		{
+			for(const int CID : m_pScenario->GetParticipants())
+			{
+				if(auto* pPlayer = m_pGS->GetPlayer(CID, true))
+					pPlayer->KillCharacter();
+			}
+
+			m_pGS->ChatWorld(m_pScenario->GetWorldID(), "World scenario", "Finished: time is over.");
+			m_pScenario->Stop();
+		}
+
+		// update
 		m_pScenario->Tick();
 		if(!m_pScenario->IsRunning())
+		{
 			m_pScenario.reset();
+			m_ScenarioDeadlineTick = 0;
+		}
 	}
 }
 
@@ -56,6 +73,7 @@ void CScenarioWorldManager::TryFinalizePendingStart()
 	{
 		m_pGS->ChatWorld(m_pScenario->GetWorldID(), "World scenario", "Cancelled: no participants joined.");
 		m_pScenario.reset();
+		m_ScenarioDeadlineTick = 0;
 		return;
 	}
 
@@ -64,6 +82,7 @@ void CScenarioWorldManager::TryFinalizePendingStart()
 	if(!m_pScenario->IsRunning())
 	{
 		m_pScenario.reset();
+		m_ScenarioDeadlineTick = 0;
 		return;
 	}
 
@@ -87,7 +106,7 @@ void CScenarioWorldManager::AttachVoteForPlayer(int ClientID)
 
 	// register callback options vote
 	const int remainingSeconds = std::max(1, (int)((m_PendingStart.m_StartAt - time_get()) / time_freq()));
-	auto* pOption = CVoteOptional::Create(ClientID, remainingSeconds, "Enter world scenario.");
+	auto* pOption = CVoteOptional::Create(ClientID, remainingSeconds, "Join the scenario.");
 	pOption->RegisterCallback([this](CPlayer* pVotePlayer, bool isJoined)
 	{
 		if(!m_PendingStart.m_Active || !pVotePlayer)

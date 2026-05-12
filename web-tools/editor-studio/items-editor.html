@@ -17,7 +17,8 @@
     .items-form [data-field-path="DataPotionEffect"],
     .items-form [data-field-path="DataPotionValue"],
     .items-form [data-field-path="DataPotionLifetime"],
-    .items-form [data-field-path="DataPotionRecast"]{
+    .items-form [data-field-path="DataPotionRecast"],
+    .items-form [data-field-path="DataScenarioRewards"]{
       grid-column: 1 / -1;
     }
   </style>
@@ -395,6 +396,7 @@
       if (editorType === DATA_EDITOR_USE_SCENARIO) {
         const worldId = toNullableInt(model?.DataScenarioWorldID);
         const name = String(model?.DataScenarioName || '').trim();
+        const duration = Math.max(0, toNullableInt(model?.DataScenarioDuration) ?? 0);
         const rewards = normalizeRandomBoxItems(model?.DataScenarioRewards)
           .filter((entry) => toNullableId(entry?.item_id) && (toNullableInt(entry?.value) ?? 0) > 0 && Number(entry?.chance) > 0)
           .map((entry) => ({
@@ -406,6 +408,8 @@
           use_scenario: {
             name,
             world_id: worldId ?? -1,
+            single: Boolean(model?.DataScenarioSingle),
+            duration,
             rewards,
           },
         };
@@ -619,6 +623,23 @@
           showWhen: (data) => String(data?.DataEditorType || '') === DATA_EDITOR_USE_SCENARIO,
         },
       },
+      DataScenarioSingle: {
+        type: 'boolean',
+        label: 'Одиночный',
+        ui: {
+          showWhen: (data) => String(data?.DataEditorType || '') === DATA_EDITOR_USE_SCENARIO,
+        },
+      },
+      DataScenarioDuration: {
+        type: 'number',
+        label: 'Время выполнения (сек.)',
+        ui: {
+          min: 0,
+          step: 1,
+          placeholder: '0 — без ограничения',
+          showWhen: (data) => String(data?.DataEditorType || '') === DATA_EDITOR_USE_SCENARIO,
+        },
+      },
       DataScenarioRewards: {
         type: 'list',
         label: 'Награды сценария',
@@ -746,6 +767,8 @@
         DataPotionRecast: 0,
         DataScenarioName: '',
         DataScenarioWorldID: 0,
+        DataScenarioSingle: false,
+        DataScenarioDuration: 0,
         DataScenarioRewards: [],
       }),
       rowToModel: (row) => {
@@ -787,6 +810,8 @@
           DataPotionRecast: normalizePotionData(dataPayload?.potion).recast,
           DataScenarioName: String(dataPayload?.use_scenario?.name || ''),
           DataScenarioWorldID: Number(dataPayload?.use_scenario?.world_id ?? 0),
+          DataScenarioSingle: Boolean(dataPayload?.use_scenario?.single),
+          DataScenarioDuration: Number(dataPayload?.use_scenario?.duration ?? 0),
           DataScenarioRewards: normalizeRandomBoxItems(dataPayload?.use_scenario?.rewards),
         });
       },

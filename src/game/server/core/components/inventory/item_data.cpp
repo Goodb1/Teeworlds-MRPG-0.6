@@ -9,6 +9,7 @@
 #include <components/Eidolons/EidolonManager.h>
 #include <components/mails/mail_wrapper.h>
 #include <game/server/core/tools/db_async_context.h>
+
 #include <game/server/core/scenarios/managers/scenario_world_manager.h>
 #include <game/server/core/scenarios/impl/scenario_world.h>
 
@@ -311,7 +312,7 @@ bool CPlayerItem::Add(int Value, int StartSettings, int StartEnchant, time_t Sta
 		m_Enchant = StartEnchant;
 		m_Settings = StartSettings;
 		m_ExpiresAt = StartExpiresAt;
-		pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_GOT, Info()->GetScenarioMode());
+		StartEmbeddedScenario(ScenarioBlocks::ItemGot);
 	}
 
 	// sync gold and bank
@@ -383,7 +384,7 @@ bool CPlayerItem::Remove(int Value)
 		if(m_Value <= Value)
 		{
 			UnEquip();
-			pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_LOST, Info()->GetScenarioMode());
+			StartEmbeddedScenario(ScenarioBlocks::ItemLost);
 		}
 
 		m_Value -= Value;
@@ -431,7 +432,7 @@ bool CPlayerItem::Equip()
 
 		m_Settings = true;
 		g_EventListenerManager.Notify<IEventListener::PlayerEquipItem>(pPlayer, this);
-		pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_EQUIP, Info()->GetScenarioMode());
+		StartEmbeddedScenario(ScenarioBlocks::ItemEquip);
 		GS()->CreateSound(pPlayer->m_ViewPos, SOUND_SFX_ITEM_EQUIP);
 		return Save();
 	}
@@ -441,7 +442,7 @@ bool CPlayerItem::Equip()
 	if(pAccount->EquipItem(m_ID))
 	{
 		g_EventListenerManager.Notify<IEventListener::PlayerEquipItem>(pPlayer, this);
-		pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_EQUIP, Info()->GetScenarioMode());
+		StartEmbeddedScenario(ScenarioBlocks::ItemEquip);
 		GS()->CreateSound(pPlayer->m_ViewPos, SOUND_SFX_ITEM_EQUIP);
 		return true;
 	}
@@ -466,7 +467,7 @@ bool CPlayerItem::UnEquip()
 
 		m_Settings = false;
 		g_EventListenerManager.Notify<IEventListener::PlayerUnequipItem>(pPlayer, this);
-		pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_UNEQUIP, Info()->GetScenarioMode());
+		StartEmbeddedScenario(ScenarioBlocks::ItemUnequip);
 		GS()->CreateSound(pPlayer->m_ViewPos, SOUND_SFX_ITEM_EQUIP);
 		return Save();
 	}
@@ -476,7 +477,7 @@ bool CPlayerItem::UnEquip()
 	if(pAccount->UnequipItem(m_ID))
 	{
 		g_EventListenerManager.Notify<IEventListener::PlayerUnequipItem>(pPlayer, this);
-		pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_UNEQUIP, Info()->GetScenarioMode());
+		StartEmbeddedScenario(ScenarioBlocks::ItemUnequip);
 		GS()->CreateSound(pPlayer->m_ViewPos, SOUND_SFX_ITEM_EQUIP);
 		return true;
 	}
@@ -501,45 +502,14 @@ bool CPlayerItem::Use(int Value)
 		return false;
 	}
 
-	// try use scenario
+	// try use item by use context and remove item
 	if(const auto& pUseData = Info()->GetUseScenarioContext(); pUseData.has_value())
 	{
-		// check valid world
-		if(pUseData->WorldID >= 0 && pUseData->WorldID != pPlayer->GetCurrentWorldID())
-		{
-			const char* pRequiredWorldName = Server()->GetWorldName(pUseData->WorldID);
-			const char* pCurrentWorldName = Server()->GetWorldName(pPlayer->GetCurrentWorldID());
-			const char* pScenarioName = pUseData->Name.empty() ? Info()->GetName() : pUseData->Name.c_str();
-			GS()->Chat(m_ClientID, "Use '{}' in world '{}' (you are in '{}').", pScenarioName, pRequiredWorldName, pCurrentWorldName);
-			return false;
-		}
-
-		// check already active
-		if(GS()->ScenarioWorldManager()->GetActiveScenario())
-		{
-			GS()->Chat(m_ClientID, "World scenario is already active in this world.");
-			return false;
-		}
-
-		// start scenario
-		GS()->ChatWorld(pUseData->WorldID, "", "{}", pUseData->Name);
-		GS()->ChatWorld(pUseData->WorldID, "", "Triggered by {}", Server()->ClientName(m_ClientID));
-		pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_USE, Info()->GetScenarioMode());
-
-		// set reward context for the just registered scenario
-		if(const auto pScenario = std::dynamic_pointer_cast<CWorldScenario>(GS()->ScenarioWorldManager()->GetActiveScenario()))
-		{
-			std::vector<CWorldScenario::RewardEntry> vRewards;
-			vRewards.reserve(pUseData->vRewards.size());
-			for(const auto& RewardEntry : pUseData->vRewards)
-				vRewards.push_back({ RewardEntry.ItemID, RewardEntry.Value, RewardEntry.Chance });
-			pScenario->SetContextRewards(vRewards);
-		}
+		StartEmbeddedScenario(ScenarioBlocks::ItemUse);
 		Remove(Value);
 		return true;
 	}
-
-	pPlayer->StartScenarioByType(Info()->GetScenarioData(), EScenarios::SCENARIO_ON_ITEM_USE, Info()->GetScenarioMode());
+	StartEmbeddedScenario(ScenarioBlocks::ItemUse);
 
 	// survial capsule experience
 	if(m_ID == itCapsuleSurvivalExperience && Remove(Value))
@@ -670,4 +640,53 @@ bool CPlayerItem::Save()
 	DbInventorySave::Start(pPlayer, m_ID, m_Value, m_Settings, m_Enchant, m_Durability, m_ExpiresAt);
 
 	return true;
+}
+
+void CPlayerItem::StartEmbeddedScenario(ScenarioBlock Block)
+{
+	auto* pPlayer = GetPlayer();
+	if(!pPlayer || !pPlayer->IsAuthed())
+		return;
+
+	const auto& ScenarioData = Info()->GetScenarioData();
+	if(ScenarioData.empty())
+		return;
+
+	// try start scenario
+	const auto& UseData = Info()->GetUseScenarioContext();
+	if(!UseData.has_value())
+	{
+		pPlayer->StartUniversalScenario(ScenarioData, Block);
+		return;
+	}
+
+	// try start world scenario
+	const int CurrentWorldID = pPlayer->GetCurrentWorldID();
+	if(UseData->WorldID >= 0 && UseData->WorldID != CurrentWorldID)
+	{
+		GS()->Chat(m_ClientID, "Use '{}' in world '{}'.", Info()->GetName(), Server()->GetWorldName(UseData->WorldID));
+		return;
+	}
+
+	// check active scenario
+	if(GS()->ScenarioWorldManager()->GetActiveScenario())
+	{
+		GS()->Chat(m_ClientID, "World scenario is already active in this world.");
+		return;
+	}
+
+	// start scenario
+	GS()->ChatWorld(UseData->WorldID, "", "{}", UseData->Name);
+	GS()->ChatWorld(UseData->WorldID, "", "Triggered by {}", Server()->ClientName(m_ClientID));
+	pPlayer->StartWorldScenario(ScenarioData, Block, UseData->WorldID, UseData->Single, UseData->DurationSeconds);
+
+	// apply rewards
+	if(const auto pScenario = std::dynamic_pointer_cast<CWorldScenario>(GS()->ScenarioWorldManager()->GetActiveScenario()))
+	{
+		std::vector<CWorldScenario::RewardEntry> vRewards;
+		vRewards.reserve(UseData->vRewards.size());
+		for(const auto& Reward : UseData->vRewards)
+			vRewards.push_back({ Reward.ItemID, Reward.Value, Reward.Chance });
+		pScenario->SetContextRewards(vRewards);
+	}
 }

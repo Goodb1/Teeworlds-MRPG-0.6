@@ -49,6 +49,8 @@ public:
 	{
 		std::string Name {};
 		int WorldID { -1 };
+		bool Single { false };
+		int DurationSeconds { 0 };
 		struct RewardEntry
 		{
 			int ItemID {};

@@ -188,7 +188,7 @@ void CQuestStep::PostFinish()
 	}
 
 	// update
-	pPlayer->StartUniversalScenario(m_Bot.m_ScenarioJson, EScenarios::SCENARIO_ON_END_STEP);
+	pPlayer->StartUniversalScenario(m_Bot.m_ScenarioJson, ScenarioBlocks::EndStep);
 	pPlayer->GetQuest(m_Bot.m_QuestID)->Update();
 	pPlayer->m_VotesData.UpdateVotesIf(MENU_JOURNAL_MAIN);
 }

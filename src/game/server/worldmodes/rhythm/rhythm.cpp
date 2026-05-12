@@ -17,6 +17,31 @@
 #include "entities/rhythm_field.h"
 #include <generated/server_data.h>
 
+std::unordered_map<int, std::string> CGameControllerRhythm::ms_WorldDifficultySelection{};
+
+void CGameControllerRhythm::SetSelectedDifficultyForWorld(int WorldID, std::string Difficulty)
+{
+	ms_WorldDifficultySelection[WorldID] = std::move(Difficulty);
+}
+
+std::string CGameControllerRhythm::GetSelectedDifficultyForWorld(int WorldID)
+{
+	const auto Iter = ms_WorldDifficultySelection.find(WorldID);
+	return Iter != ms_WorldDifficultySelection.end() ? Iter->second : "Normal";
+}
+
+void CGameControllerRhythm::ApplyDifficulty(const std::string& Difficulty)
+{
+	if(Difficulty.empty())
+		return;
+
+	m_Difficulty = Difficulty;
+	LoadDanceMapData(Server()->GetWorldName(GS()->GetWorldID()), m_Difficulty);
+	RebuildTickTimings();
+	m_CurrentNote = 0;
+	m_NextSpawnNote = 0;
+}
+
 namespace
 {
 	enum class SoundRhythm : int
@@ -39,10 +64,10 @@ CGameControllerRhythm::CGameControllerRhythm(CGS* pGameServer)
 	m_FieldAnchorValid = false;
 	mem_zero(m_aLanePressTick, sizeof(m_aLanePressTick));
 	mem_zero(m_aLaneHoldTick, sizeof(m_aLaneHoldTick));
+	mem_zero(m_aLanePrevHitTick, sizeof(m_aLanePrevHitTick));
 	mem_zero(m_aLaneLastHitTick, sizeof(m_aLaneLastHitTick));
 	mem_zero(m_aLanePressId, sizeof(m_aLanePressId));
 	mem_zero(m_aLanePressUsedId, sizeof(m_aLanePressUsedId));
-	mem_zero(m_aNoteLaneHitMask, sizeof(m_aNoteLaneHitMask));
 	for(auto &Score : m_aScores)
 		Score = {};
 }
@@ -61,7 +86,8 @@ void CGameControllerRhythm::OnInit()
 	m_State = EStageState::STATE_WAIT;
 
 	// initialize
-	LoadDanceMapData(Server()->GetWorldName(GS()->GetWorldID()));
+	m_Difficulty = GetSelectedDifficultyForWorld(GS()->GetWorldID());
+	LoadDanceMapData(Server()->GetWorldName(GS()->GetWorldID()), m_Difficulty);
 	RebuildTickTimings();
 	for(int ClientID = 0; ClientID < MAX_PLAYERS; ++ClientID)
 		ResetClientState(ClientID);
@@ -224,10 +250,32 @@ int CGameControllerRhythm::NoteTimeToTick(double NoteTime) const
 
 void CGameControllerRhythm::RebuildTickTimings()
 {
-	m_vNoteTicks.clear();
-	m_vNoteTicks.reserve(m_vNotes.size());
+	if(m_vNotes.empty())
+	{
+		m_vNoteTicks.clear();
+		return;
+	}
+
+	std::vector<CNote> vMergedNotes;
+	std::vector<int> vMergedTicks;
+	vMergedNotes.reserve(m_vNotes.size());
+	vMergedTicks.reserve(m_vNotes.size());
+
 	for(const auto &Note : m_vNotes)
-		m_vNoteTicks.push_back(NoteTimeToTick(Note.m_Time));
+	{
+		const int Tick = NoteTimeToTick(Note.m_Time);
+		if(!vMergedTicks.empty() && vMergedTicks.back() == Tick)
+		{
+			vMergedNotes.back().m_StepBits |= Note.m_StepBits;
+			continue;
+		}
+
+		vMergedNotes.push_back(Note);
+		vMergedTicks.push_back(Tick);
+	}
+
+	m_vNotes = std::move(vMergedNotes);
+	m_vNoteTicks = std::move(vMergedTicks);
 }
 
 void CGameControllerRhythm::ChangeState(EStageState State)
@@ -330,15 +378,19 @@ bool CGameControllerRhythm::OnCharacterSpawn(CCharacter* pChr)
 	return true;
 }
 
-bool CGameControllerRhythm::LoadDanceMapData(const char* pMapName)
+bool CGameControllerRhythm::LoadDanceMapData(const char* pMapName, const std::string& Difficulty)
 {
 	char aFilename[IO_MAX_PATH_LENGTH];
-	str_format(aFilename, sizeof(aFilename), "maps/rhythm/%s.json", pMapName);
+	str_format(aFilename, sizeof(aFilename), "maps/rhythm/%s[%s].json", pMapName, Difficulty.c_str());
 
 	void* pFileData = nullptr;
 	unsigned FileSize = 0;
 	if(!GS()->Storage()->ReadFile(aFilename, IStorageEngine::TYPE_ALL, &pFileData, &FileSize))
-		return false;
+	{
+		str_format(aFilename, sizeof(aFilename), "maps/rhythm/%s.json", pMapName);
+		if(!GS()->Storage()->ReadFile(aFilename, IStorageEngine::TYPE_ALL, &pFileData, &FileSize))
+			return false;
+	}
 
 	nlohmann::json JsonData;
 	const std::string RawJson((const char*)pFileData, FileSize);
@@ -406,11 +458,11 @@ void CGameControllerRhythm::ResetClientState(int ClientID)
 	{
 		m_aLanePressTick[ClientID][LaneIndex] = SRhythmFieldConfig::s_InvalidPressTick;
 		m_aLaneHoldTick[ClientID][LaneIndex] = SRhythmFieldConfig::s_InvalidPressTick;
+		m_aLanePrevHitTick[ClientID][LaneIndex] = SRhythmFieldConfig::s_InvalidPressTick;
 		m_aLaneLastHitTick[ClientID][LaneIndex] = SRhythmFieldConfig::s_InvalidPressTick;
 	}
 	mem_zero(m_aLanePressId[ClientID], sizeof(m_aLanePressId[ClientID]));
 	mem_zero(m_aLanePressUsedId[ClientID], sizeof(m_aLanePressUsedId[ClientID]));
-	m_aNoteLaneHitMask[ClientID] = 0;
 	m_aScores[ClientID] = {};
 }
 
@@ -419,29 +471,44 @@ void CGameControllerRhythm::ScoreHit(int ClientID, int RatingDelta)
 	if(!IsValidClientID(ClientID))
 		return;
 
+	int BasePoints = 0;
 	const char* pText = "MISS";
+	SRhythmScore &Score = m_aScores[ClientID];
 	if(RatingDelta <= SRhythmFieldConfig::s_PerfectWindowTicks)
 	{
 		pText = "PERFECT";
-		m_aScores[ClientID].m_Perfect++;
-		m_aScores[ClientID].m_LastGrade = ERhythmHitGrade::PERFECT;
+		Score.m_Perfect++;
+		Score.m_LastGrade = ERhythmHitGrade::PERFECT;
+		BasePoints = 3;
 	}
 	else if(RatingDelta <= SRhythmFieldConfig::s_GoodWindowTicks)
 	{
 		pText = "GOOD";
-		m_aScores[ClientID].m_Good++;
-		m_aScores[ClientID].m_LastGrade = ERhythmHitGrade::GOOD;
+		Score.m_Good++;
+		Score.m_LastGrade = ERhythmHitGrade::GOOD;
+		BasePoints = 2;
 	}
 	else if(RatingDelta <= SRhythmFieldConfig::s_BadWindowTicks)
 	{
 		pText = "BAD";
-		m_aScores[ClientID].m_Bad++;
-		m_aScores[ClientID].m_LastGrade = ERhythmHitGrade::BAD;
+		Score.m_Bad++;
+		Score.m_LastGrade = ERhythmHitGrade::BAD;
+		BasePoints = 1;
 	}
 	else
 	{
-		m_aScores[ClientID].m_Miss++;
-		m_aScores[ClientID].m_LastGrade = ERhythmHitGrade::MISS;
+		Score.m_Miss++;
+		Score.m_LastGrade = ERhythmHitGrade::MISS;
+		Score.m_Combo = 0;
+	}
+
+	if(BasePoints > 0)
+	{
+		Score.m_Combo++;
+		Score.m_MaxCombo = maximum(Score.m_MaxCombo, Score.m_Combo);
+		const int ComboBonusPercent = minimum(100, (Score.m_Combo - 1) * 4);
+		const int AddedPoints = BasePoints + BasePoints * ComboBonusPercent / 100;
+		Score.m_Points += AddedPoints;
 	}
 
 	const auto TextPos = vec2(m_FieldAnchorPos.x, m_FieldAnchorPos.y + 48.f);
@@ -450,7 +517,7 @@ void CGameControllerRhythm::ScoreHit(int ClientID, int RatingDelta)
 
 int CGameControllerRhythm::ScorePoints(const SRhythmScore& Score) const
 {
-	return Score.m_Perfect * 3 + Score.m_Good * 2 + Score.m_Bad;
+	return Score.m_Points;
 }
 
 bool CGameControllerRhythm::IsActivePlayer(int ClientID) const
@@ -461,7 +528,7 @@ bool CGameControllerRhythm::IsActivePlayer(int ClientID) const
 
 std::string CGameControllerRhythm::BuildTopScoresBroadcastText(int MaxRows) const
 {
-	std::vector<std::pair<std::string, int>> vTop;
+	std::vector<std::pair<std::string, std::string>> vTop;
 	vTop.reserve(MAX_PLAYERS);
 	for(int ClientID = 0; ClientID < MAX_PLAYERS; ++ClientID)
 	{
@@ -471,7 +538,9 @@ std::string CGameControllerRhythm::BuildTopScoresBroadcastText(int MaxRows) cons
 		const auto* pName = Server()->ClientName(ClientID);
 		if(!pName || !pName[0])
 			continue;
-		vTop.emplace_back(pName, ScorePoints(m_aScores[ClientID]));
+
+		const auto result = fmt_default("{} (x{})", ScorePoints(m_aScores[ClientID]), m_aScores[ClientID].m_Combo);
+		vTop.emplace_back(pName, result);
 	}
 
 	std::stable_sort(vTop.begin(), vTop.end(), [](const auto& Left, const auto& Right)
@@ -493,7 +562,7 @@ std::string CGameControllerRhythm::BuildTopScoresBroadcastText(int MaxRows) cons
 			Result.push_back('\n');
 
 		char aLine[96];
-		str_format(aLine, sizeof(aLine), "%d. %s %d", i + 1, vTop[i].first.c_str(), vTop[i].second);
+		str_format(aLine, sizeof(aLine), "%d. %s %s", i + 1, vTop[i].first.c_str(), vTop[i].second.c_str());
 		Result += aLine;
 	}
 	return Result;
@@ -590,10 +659,7 @@ void CGameControllerRhythm::ProcessPlayerInput(int ClientID, const CNetObj_Playe
 			if(!aLaneBits[LaneIndex])
 				continue;
 
-			const uint8_t LaneMask = 1u << LaneIndex;
-			if(m_aNoteLaneHitMask[ClientID] & LaneMask)
-				continue;
-			if(m_aLaneLastHitTick[ClientID][LaneIndex] == NoteTick)
+			if(m_aLaneLastHitTick[ClientID][LaneIndex] == NoteTick || m_aLanePrevHitTick[ClientID][LaneIndex] == NoteTick)
 				continue;
 			if(m_pRhythmField->IsHiddenArrowForClient(LaneIndex, NoteTick, ClientID))
 				continue;
@@ -616,7 +682,7 @@ void CGameControllerRhythm::ProcessPlayerInput(int ClientID, const CNetObj_Playe
 			GS()->CreateHammerHit(EffectPos, CmaskOne(ClientID));
 			ScoreHit(ClientID, RawDelta);
 			m_pRhythmField->HideArrowForClient(LaneIndex, NoteTick, ClientID);
-			m_aNoteLaneHitMask[ClientID] |= LaneMask;
+			m_aLanePrevHitTick[ClientID][LaneIndex] = m_aLaneLastHitTick[ClientID][LaneIndex];
 			m_aLaneLastHitTick[ClientID][LaneIndex] = NoteTick;
 			m_aLanePressUsedId[ClientID][LaneIndex] = m_aLanePressId[ClientID][LaneIndex];
 		}
@@ -665,11 +731,11 @@ void CGameControllerRhythm::UpdateNotes()
 				{
 					if(!aLaneBits[LaneIndex])
 						continue;
-					const uint8_t LaneMask = 1u << LaneIndex;
-					if(m_aNoteLaneHitMask[i] & LaneMask)
+					if(m_aLaneLastHitTick[i][LaneIndex] == NoteTick || m_aLanePrevHitTick[i][LaneIndex] == NoteTick)
 						continue;
 					m_aScores[i].m_Miss++;
 					m_aScores[i].m_LastGrade = ERhythmHitGrade::MISS;
+					m_aScores[i].m_Combo = 0;
 				}
 			}
 		}
@@ -678,8 +744,6 @@ void CGameControllerRhythm::UpdateNotes()
 			break;
 
 		++m_CurrentNote;
-		for(int i = 0; i < MAX_PLAYERS; ++i)
-			m_aNoteLaneHitMask[i] = 0;
 	}
 }
 
@@ -688,7 +752,7 @@ void CGameControllerRhythm::SaveRhythmResults()
 	for(int ClientID = 0; ClientID < MAX_PLAYERS; ++ClientID)
 	{
 		auto* pPlayer = GS()->GetPlayer(ClientID);
-		if(!IsActivePlayer(ClientID) || !pPlayer->IsAuthed())
+		if(!pPlayer || !IsActivePlayer(ClientID) || !pPlayer->IsAuthed())
 			continue;
 
 		const auto& Score = m_aScores[ClientID];
@@ -701,12 +765,24 @@ void CGameControllerRhythm::SaveRhythmResults()
 		pPlayer->GetItem(itMaterial)->Add(MaterialReward, 0, 0, 0, false);
 		GS()->Chat(ClientID, "You received {} materials for completing Rhythm!", MaterialReward);
 
-		// update
+		// save a single best record per player in current rhythm world
 		const int AccountID = pPlayer->Account()->GetID();
 		const int WorldID = GS()->GetWorldID();
-		Database->Execute<DB::INSERT>("tw_rhythm_records", "(UserID, WorldID, Score) VALUES ('{}', '{}', '{}') "
-			"ON DUPLICATE KEY UPDATE Score = GREATEST(Score, VALUES(Score))", AccountID, WorldID, Points);
-		GS()->Chat(-1, "'{}' finished '{}' with {} points!", Server()->ClientName(ClientID), Server()->GetWorldName(WorldID), Points);
+		ResultPtr pRes = Database->Execute<DB::SELECT>("ID, Score", "tw_rhythm_records",
+			"WHERE UserID = '{}' AND WorldID = '{}' AND Difficulty = '{}' ORDER BY Score DESC LIMIT 1", AccountID, WorldID, m_Difficulty.c_str());
+		if(!pRes->next())
+		{
+			Database->Execute<DB::INSERT>("tw_rhythm_records", "(UserID, WorldID, Difficulty, Score) VALUES ('{}', '{}', '{}', '{}')",
+				AccountID, WorldID, m_Difficulty.c_str(), Points);
+		}
+		else
+		{
+			const int RecordID = pRes->getInt("ID");
+			const int BestScore = pRes->getInt("Score");
+			if(Points > BestScore)
+				Database->Execute<DB::UPDATE>("tw_rhythm_records", "Score = '{}' WHERE ID = '{}'", Points, RecordID);
+		}
+		GS()->Chat(-1, "'{}' finished '{}[{}]' with {} points!", Server()->ClientName(ClientID), Server()->GetWorldName(WorldID), m_Difficulty, Points);
 	}
 }
 

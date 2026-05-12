@@ -2,6 +2,7 @@
 #include "components/default.h"
 #include <game/server/core/scenarios/base/component_registry.h>
 #include <game/server/player.h>
+#include <generated/server_data.h>
 
 class WorldGroupLivesComponent final : public Component<GroupScenarioBase, WorldGroupLivesComponent>
 {
@@ -52,25 +53,30 @@ public:
 	DECLARE_COMPONENT_NAME("world_complete")
 
 private:
+	void GiveRewards(CPlayer* pPlayer)
+	{
+		for(const auto& Reward : Scenario()->GetContextRewards())
+		{
+			auto* pItem = pPlayer->GetItem(Reward.m_ItemID);
+			if(!pItem || random_float(100.0f) > Reward.m_Chance)
+				continue;
+
+			pItem->Add(Reward.m_Value, 0, 0, 0, false);
+			GS()->Chat(pPlayer->GetCID(), "Scenario reward: {} x{}.", pItem->Info()->GetName(), Reward.m_Value);
+		}
+	}
+
 	void OnStartImpl() override
 	{
-		if(m_Successful)
+		const int SoundId = m_Successful ? SOUND_GAME_DONE : SOUND_GAME_WANTED;
+		for(const int ClientID : Scenario()->GetParticipants())
 		{
-			for(const int ClientID : Scenario()->GetParticipants())
+			auto* pPlayer = GS()->GetPlayer(ClientID);
+			if(pPlayer)
 			{
-				auto* pPlayer = GS()->GetPlayer(ClientID);
-				if(!pPlayer)
-					continue;
-
-				for(const auto& Reward : Scenario()->GetContextRewards())
-				{
-					auto* pItem = pPlayer->GetItem(Reward.m_ItemID);
-					if(pItem && random_float(100.0f) < Reward.m_Chance)
-					{
-						pItem->Add(Reward.m_Value, 0, 0, false);
-						GS()->Chat(ClientID, "Scenario reward: {} x{}.", pItem->Info()->GetName(), Reward.m_Value);
-					}
-				}
+				GS()->CreatePlayerSound(ClientID, SoundId);
+				if(m_Successful)
+					GiveRewards(pPlayer);
 			}
 		}
 

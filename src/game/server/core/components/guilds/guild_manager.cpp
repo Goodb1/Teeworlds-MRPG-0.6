@@ -937,6 +937,15 @@ bool CGuildManager::OnSendMenuVotes(CPlayer* pPlayer, int Menulist)
 		return true;
 	}
 
+	// menu guild progression tree
+	if(Menulist == MENU_GUILD_PROGRESSION_TREE)
+	{
+		pPlayer->m_VotesData.SetLastMenuID(MENU_GUILD);
+		ShowProgressionTree(pPlayer);
+		VoteWrapper::AddBackpage(ClientID);
+		return true;
+	}
+
 	// menu guild disband
 	if(Menulist == MENU_GUILD_DISBAND)
 	{
@@ -1220,6 +1229,7 @@ void CGuildManager::ShowMenu(int ClientID) const
 	VManagement.AddOption("GUILD_DEPOSIT_GOLD", "Deposit. (Amount in a reason)");
 	VManagement.AddLine();
 	VManagement.AddMenu(MENU_GUILD_UPGRADES, "Improvements & Upgrades");
+	VManagement.AddMenu(MENU_GUILD_PROGRESSION_TREE, "Progression tree");
 	VManagement.AddMenu(MENU_GUILD_MEMBER_LIST, "Membership list");
 	VManagement.AddMenu(MENU_GUILD_INVITATIONS, "Membership requests");
 	VManagement.AddMenu(MENU_GUILD_RANK_LIST, "Rank management");
@@ -1243,6 +1253,24 @@ void CGuildManager::ShowMenu(int ClientID) const
 		VHouse.AddMenu(MENU_GUILD_HOUSE_FARMZONE_LIST, "Farms");
 		VHouse.AddMenu(MENU_GUILD_SELL_HOUSE, "Sell");
 	}
+}
+
+void CGuildManager::ShowProgressionTree(CPlayer* pPlayer) const
+{
+	auto* pGuild = pPlayer->Account()->GetGuild();
+	if(!pGuild)
+		return;
+
+	int ClientID = pPlayer->GetCID();
+
+	// information
+	VoteWrapper VInfo(ClientID, VWF_STYLE_STRICT_BOLD | VWF_SEPARATE, "\u2324 Guild progression tree (Information)");
+	VInfo.Add("Unlock bonuses through collective progress.");
+	VInfo.Add("Current level: {}", pGuild->GetLevel());
+	VoteWrapper::AddEmptyline(ClientID);
+
+	// TODO: start impl guild progression tree
+	VoteWrapper(ClientID).Add("COMING SOON....");
 }
 
 void CGuildManager::ShowUpgrades(CPlayer* pPlayer) const
